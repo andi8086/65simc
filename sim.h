@@ -4,6 +4,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <time.h>
+
+#define F_N 0x80
+#define F_O 0x40
+#define F_B 0x10
+#define F_D 0x08
+#define F_I 0x04
+#define F_Z 0x02
+#define F_C 0x01
 
 struct CPU {
     uint8_t A;
@@ -17,7 +26,7 @@ struct CPU {
 extern struct CPU cpu;
 extern uint8_t memory[65536];
 
-typedef void (*INSTR_FUNC)(int);
+typedef void (*INSTR_FUNC)(int, uint8_t);
 
 enum amode {
     aNULL,
@@ -31,7 +40,9 @@ enum amode {
     aaby,
     aind,
     aizx,
-    aizy
+    aizy,
+    aS,
+    aA
 };
 
 struct op_ccaaa {

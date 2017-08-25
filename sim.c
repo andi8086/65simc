@@ -1,41 +1,42 @@
+#include <stdio.h>
 #include "sim.h"
 
 uint8_t memory[65536];
 
 struct CPU cpu;
 
-void group0(int a);
-void group1(int a);
-void group2(int a);
-void group3(int a);
-void group4(int a);
-void group5(int a);
-void group6(int a);
-void group7(int a);
-void groupORA(int a);
-void groupAND(int a);
-void groupEOR(int a);
-void groupADC(int a);    
-void groupSTA(int a);     
-void groupLDA(int a);     
-void groupCMP(int a); 
-void groupSBC(int a);    
-void groupASL(int a); 
-void groupROL(int a);    
-void groupLSR(int a);   
-void groupROR(int a); 
-void groupSX(int a); 
-void groupLX(int a);  
-void groupDEC(int a); 
-void groupINC(int a); 
-void groupSLO(int a); 
-void groupRLA(int a); 
-void groupSRE(int a); 
-void groupRRA(int a); 
-void groupSAX(int a); 
-void groupLAX(int a); 
-void groupDCP(int a); 
-void groupISC(int a); 
+void group0(int a, uint8_t idx);
+void group1(int a, uint8_t idx);
+void group2(int a, uint8_t idx);
+void group3(int a, uint8_t idx);
+void group4(int a, uint8_t idx);
+void group5(int a, uint8_t idx);
+void group6(int a, uint8_t idx);
+void group7(int a, uint8_t idx);
+void groupORA(int a, uint8_t idx);
+void groupAND(int a, uint8_t idx);
+void groupEOR(int a, uint8_t idx);
+void groupADC(int a, uint8_t idx);
+void groupSTA(int a, uint8_t idx);
+void groupLDA(int a, uint8_t idx);
+void groupCMP(int a, uint8_t idx);
+void groupSBC(int a, uint8_t idx);
+void groupASL(int a, uint8_t idx);
+void groupROL(int a, uint8_t idx);
+void groupLSR(int a, uint8_t idx);
+void groupROR(int a, uint8_t idx);
+void groupSX(int a, uint8_t idx);
+void groupLX(int a, uint8_t idx);
+void groupDEC(int a, uint8_t idx);
+void groupINC(int a, uint8_t idx);
+void groupSLO(int a, uint8_t idx);
+void groupRLA(int a, uint8_t idx);
+void groupSRE(int a, uint8_t idx);
+void groupRRA(int a, uint8_t idx);
+void groupSAX(int a, uint8_t idx);
+void groupLAX(int a, uint8_t idx);
+void groupDCP(int a, uint8_t idx);
+void groupISC(int a, uint8_t idx);
 
 struct op_ccaaa opcodes[] = {
     {0, 0, {aNULL, azp, aNULL, aabs, arel, azpx, aNULL, aabx}, {7, 3, 3, 4, 2, 4, 2, 4}, group0},
@@ -58,8 +59,8 @@ struct op_ccaaa opcodes[] = {
     {2, 1, {aNULL, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupROL},
     {2, 2, {aNULL, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupLSR},
     {2, 3, {aNULL, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupROR},
-    {2, 4, {aimm, azp, aNULL, aabs, aNULL, azpy, aNULL, aaby}, {2, 3, 2, 4, 0, 4, 2, 5}, groupSX},
-    {2, 5, {aimm, azp, aNULL, aabs, aNULL, azpy, aNULL, aaby}, {2, 3, 2, 4, 0, 4, 2, 4}, groupLX},
+    {2, 4, {aimm, azp, aA, aabs, aNULL, azpy, aS, aaby}, {2, 3, 2, 4, 0, 4, 2, 5}, groupSX},
+    {2, 5, {aimm, azp, aA, aabs, aNULL, azpy, aS, aaby}, {2, 3, 2, 4, 0, 4, 2, 4}, groupLX},
     {2, 6, {aimm, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {2, 5, 2, 6, 0, 6, 0, 7}, groupDEC},
     {2, 7, {aimm, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {2, 5, 2, 6, 0, 6, 2, 7}, groupINC},
     {3, 0, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupSLO},
@@ -69,8 +70,14 @@ struct op_ccaaa opcodes[] = {
     {3, 4, {aizx, azp, aimm, aabs, aizy, azpy, aaby, aaby}, {6, 3, 2, 4, 6, 4, 5, 5}, groupSAX},
     {3, 5, {aizx, azp, aimm, aabs, aizy, azpy, aaby, aaby}, {6, 3, 2, 4, 5, 4, 4, 4}, groupLAX},
     {3, 6, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupDCP},
-    {3, 7, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupISC} 
+    {3, 7, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupISC}
 };
+
+void dumpRegs()
+{
+    printf("PC = %04X  S = %02X  A = %02X   X = %02X   Y = %02X\n", cpu.PC, cpu.S, cpu.A, cpu.X, cpu.Y);
+
+}
 
 int main(int argc, char* argv[])
 {
@@ -78,22 +85,47 @@ int main(int argc, char* argv[])
     uint8_t cc, idx;
     enum amode a;
     uint8_t op, cycles;
+    struct timespec wait_time = {0};
+    struct timespec time, time_old;
+    
+    /* Get timer resolution */
+    clock_getres(CLOCK_REALTIME, &time);
+    printf("Realtime clock resolution: %lu ns\n", time.tv_nsec);
 
     cpu.PC = 0x200;
     cpu.S = 0xFF;
     cpu.F = 0;
 
-    done = true;
-    while(!done) {
+    memory[0x200] = 0xA9;
+    memory[0x201] = 0xEA;
+    memory[0x202] = 0x8D;
+    memory[0x203] = 0x12;
+    memory[0x204] = 0x00;
+        
+    clock_gettime(CLOCK_REALTIME, &time_old);
+    clock_gettime(CLOCK_REALTIME, &time);
+    printf("%lu - \n", time.tv_nsec - time_old.tv_nsec);
+
+    for(int i = 0; i < 2; i++) {
+        clock_gettime(CLOCK_REALTIME, &time);
+        printf("%lu,%lu - ", time.tv_sec, time.tv_nsec);
         op = memory[cpu.PC];
         cc = op & 3;
         op >>= 2;
-        op |= cc;
-        idx = op >> 3 & 32;
+        op |= cc << 6;
+        idx = op >> 3;
+//        printf("%3o\n", op);
         a = opcodes[idx].addr_modes[op & 7];
+//        printf("%d\n", idx);
         cycles = opcodes[idx].cycles[op & 7];
-        opcodes[idx].func(a);
+        opcodes[idx].func(a, op & 7);
+        // wait cycles
+        wait_time.tv_nsec = cycles * 500;
+//        nanosleep(&wait_time, NULL); 
+        dumpRegs();
     }
+
+    printf("%2X", memory[0x12]);
 
     return 0;
 
