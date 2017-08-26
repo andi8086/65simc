@@ -7,12 +7,18 @@
 #include <time.h>
 
 #define F_N 0x80
-#define F_O 0x40
+#define F_V 0x40
 #define F_B 0x10
 #define F_D 0x08
 #define F_I 0x04
 #define F_Z 0x02
 #define F_C 0x01
+
+#define F_MASK_NZ  0x7D
+#define F_MASK_NZC 0x7C
+#define F_MASK_NVZC 0x3C
+#define F_MASK_ZC  0xFC
+#define F_MASK_V   0xBF
 
 struct CPU {
     uint8_t A;
@@ -20,7 +26,7 @@ struct CPU {
     uint8_t Y;
     uint8_t S;
     uint16_t PC;
-    uint8_t F;
+    uint8_t P;
 };
 
 extern struct CPU cpu;
@@ -42,7 +48,8 @@ enum amode {
     aizx,
     aizy,
     aS,
-    aA
+    aA,
+    aX
 };
 
 struct op_ccaaa {
