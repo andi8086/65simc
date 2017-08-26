@@ -2,18 +2,18 @@
 #include "sim.h"
 
 #define STACK_STORE16(x) \
-    memory[0x100 + cpu.S--] = x & 0xFF; \
-    memory[0x100 + cpu.S--] = x >> 8;
+    memory[0x100 + cpu.S--] = x >> 8; \
+    memory[0x100 + cpu.S--] = x & 0xFF;
 
 #define STACK_STORE8(x) \
     memory[0x100 + cpu.S--] = x;
 
 #define STACK_LOAD16(x) \
-    x = memory[0x100 + cpu.S++]; \
-    x |= memory[0x100 + cpu.S++] << 8;
+    x = memory[0x100 + ++cpu.S]; \
+    x |= memory[0x100 + ++cpu.S] << 8;
 
 #define STACK_LOAD8(x) \
-    x = memory[0x100 + cpu.S++];
+    x = memory[0x100 + ++cpu.S];
 
 
 uint8_t *addrDecode(enum amode a)
@@ -145,12 +145,14 @@ void group0(int a, uint8_t idx)
 void group1(int a, uint8_t idx)
 {
     uint8_t *op;
+    uint16_t ret_addr;
 
     cpu.PC++;
     switch(idx) {
     case 0:            // JSR abs
-        op = addrDecode(a);
-        cpu.PC = *op;
+        ret_addr = cpu.PC + 2;
+        STACK_STORE16(ret_addr);
+        cpu.PC = *((uint16_t*) &memory[cpu.PC]);
         return;
     case 1:            // BIT zp
     case 3:            // BIT abs
@@ -198,7 +200,7 @@ void group2(int a, uint8_t idx)
         cpu.PC++;
         return;
     case 6:            // CLI
-        cpu.PC &= ~ (uint8_t) F_I;
+        cpu.P &= ~ (uint8_t) F_I;
         return;
     }
 }
@@ -511,7 +513,7 @@ void groupROL(int a, uint8_t idx)
     m = addrDecode(a);
     c = (*m & 0x80) >> 7;
     *m <<= 1;
-    *m |= c;
+    *m |= cpu.P & F_C;
     cpu.P &= F_MASK_NZC;
     // set C flag
     cpu.P |= c;
@@ -545,11 +547,11 @@ void groupROR(int a, uint8_t idx)
     m = addrDecode(a);
     c = *m & 1;
     *m >>= 1;
-    *m |= c << 7;
+    *m |= (cpu.P & F_C) << 7;
     cpu.P &= F_MASK_NZC;
      
     // N flag is C flag
-    cpu.P |= c << 7;
+    cpu.P |= *m & 0x80;
     cpu.P |= c;
     if (!*m) {
         cpu.P |= F_Z;
@@ -565,7 +567,7 @@ void groupSX(int a, uint8_t idx)
         cpu.P &= F_MASK_NZ;
         // set N flag
         cpu.P |= cpu.X & 0x80;
-        if (cpu.X) {
+        if (!cpu.X) {
             // set Z flag
             cpu.P |= F_Z;
         }
@@ -581,7 +583,7 @@ void groupLX(int a, uint8_t idx)
         cpu.P &= F_MASK_NZ;
         // set N flag
         cpu.P |= cpu.X & 0x80;
-        if (cpu.X) {
+        if (!cpu.X) {
             // set Z flag
             cpu.P |= F_Z;
         }
@@ -596,7 +598,7 @@ void groupDEC(int a, uint8_t idx)
     cpu.P &= F_MASK_NZ;
     // set N flag
     cpu.P |= cpu.X & 0x80;
-    if (cpu.X) {
+    if (!cpu.X) {
         // set Z flag
         cpu.P |= F_Z;
     }
@@ -614,7 +616,7 @@ void groupINC(int a, uint8_t idx)
     cpu.P &= F_MASK_NZ;
     // set N flag
     cpu.P |= cpu.X & 0x80;
-    if (cpu.X) {
+    if (!cpu.X) {
         // set Z flag
         cpu.P |= F_Z;
     }

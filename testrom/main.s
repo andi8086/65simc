@@ -18,8 +18,8 @@ equal:
     CLC
     ADC #$11
     CMP #$FB
-    BNE error    
-   
+    BNE error
+
     PHA
     LDA #$00
     PLA
@@ -28,8 +28,26 @@ equal:
     TAX
     TYA
     LDY #$00
-    TAY   
-  
+    TAY
+
+    SED
+    SEI
+    SEC
+    PHP
+    PLA
+    CLC
+    CLI
+    CLD
+
+    LDX #$2D
+    LDY #$1
+    STA $1233,Y
+    SEC
+    SBC $1234
+    BNE error
+
+    JSR ShiftTest
+
     JMP $FFFF
 
 error:
@@ -37,6 +55,49 @@ error:
     LDX #$FF
     LDY #$FF
     JMP $FFFF
+
+
+ShiftTest:
+    LDA #$FF
+    ASL
+    ASL
+    ASL
+    ASL
+    ASL
+    ASL
+    ASL
+    ASL
+    CLC
+    SEC
+    ROR
+    ROR
+    ROR
+    ROR
+    ROR
+    ROR
+    ROR
+    ROR
+    ROR
+    ROL
+    ROL
+    ROL
+    ROL
+    ROL
+    ROL
+    ROL
+    ROL
+    ROL
+    LDA #$EF
+    LSR
+    LSR
+    LSR
+    LSR
+    LSR
+    LSR
+    LSR
+    LSR
+    LSR
+    RTS
 
 __nmi:
     NOP

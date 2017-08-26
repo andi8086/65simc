@@ -58,10 +58,10 @@ struct op_ccaaa opcodes[] = {
     {1, 5, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {6, 3, 2, 4, 5, 4, 4, 4}, groupLDA},
     {1, 6, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {6, 3, 2, 4, 5, 4, 4, 4}, groupCMP},
     {1, 7, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {6, 3, 2, 4, 5, 4, 4, 4}, groupSBC},
-    {2, 0, {aNULL, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupASL},
-    {2, 1, {aNULL, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupROL},
-    {2, 2, {aNULL, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupLSR},
-    {2, 3, {aNULL, azp, aNULL, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupROR},
+    {2, 0, {aNULL, azp, aA, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupASL},
+    {2, 1, {aNULL, azp, aA, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupROL},
+    {2, 2, {aNULL, azp, aA, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupLSR},
+    {2, 3, {aNULL, azp, aA, aabs, aNULL, azpx, aNULL, aabx}, {0, 5, 2, 6, 0, 6, 2, 7}, groupROR},
     {2, 4, {aimm, azp, aA, aabs, aNULL, azpy, aS, aaby}, {2, 3, 2, 4, 0, 4, 2, 5}, groupSX},
     {2, 5, {aimm, azp, aA, aabs, aNULL, azpy, aS, aaby}, {2, 3, 2, 4, 0, 4, 2, 4}, groupLX},
     {2, 6, {aimm, azp, aX, aabs, aNULL, azpx, aNULL, aabx}, {2, 5, 2, 6, 0, 6, 0, 7}, groupDEC},
@@ -69,7 +69,7 @@ struct op_ccaaa opcodes[] = {
     {3, 0, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupSLO},
     {3, 1, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupRLA},
     {3, 2, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupSRE},
-    {3, 3, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6 , 8, 6, 7, 7}, groupRRA},
+    {3, 3, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupRRA},
     {3, 4, {aizx, azp, aimm, aabs, aizy, azpy, aaby, aaby}, {6, 3, 2, 4, 6, 4, 5, 5}, groupSAX},
     {3, 5, {aizx, azp, aimm, aabs, aizy, azpy, aaby, aaby}, {6, 3, 2, 4, 5, 4, 4, 4}, groupLAX},
     {3, 6, {aizx, azp, aimm, aabs, aizy, azpx, aaby, aabx}, {8, 5, 2, 6, 8, 6, 7, 7}, groupDCP},
@@ -78,8 +78,15 @@ struct op_ccaaa opcodes[] = {
 
 void dumpRegs()
 {
-    printf("PC = %04X  S = %02X  A = %02X   X = %02X   Y = %02X\n", cpu.PC, cpu.S, cpu.A, cpu.X, cpu.Y);
-
+    printf("PC = %04X  S = %02X  A = %02X   X = %02X   Y = %02X  ", cpu.PC, cpu.S, cpu.A, cpu.X, cpu.Y);
+    printf("FLAGS = %c%c%c%c%c%c%c\n", 
+        cpu.P & F_N ? 'N' : ' ',
+        cpu.P & F_V ? 'V' : ' ',
+        cpu.P & F_B ? 'B' : ' ',
+        cpu.P & F_D ? 'D' : ' ',
+        cpu.P & F_I ? 'I' : ' ',
+        cpu.P & F_Z ? 'Z' : ' ',
+        cpu.P & F_C ? 'C' : ' ');
 }
 
 
@@ -105,11 +112,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
     {
     case 'r':
         arguments->romfile = arg;
-        fprintf(stdout, "ROM is loaded from %s", arguments->romfile);
+        fprintf(stdout, "ROM is loaded from %s\n", arguments->romfile);
         break;
     case 'a':
         arguments->romaddr = strtol(arg, NULL, 16);
-        fprintf(stdout, "ROM starts at %u", arguments->romaddr);
+        fprintf(stdout, "ROM starts at %u\n", arguments->romaddr);
         break;
     case ARGP_KEY_ARG:
         if (state->arg_num > 0) {
@@ -144,9 +151,7 @@ int main(int argc, char **argv)
     
     /* Get timer resolution */
     clock_getres(CLOCK_REALTIME, &time);
-    printf("Realtime clock resolution: %lu ns\n", time.tv_nsec);
-
-
+    fprintf(stdout, "Realtime clock resolution: %lu ns\n", time.tv_nsec);
 
     cpu.S = 0xFF;
     cpu.P = 0x20;   // undefined bit is always set
@@ -161,7 +166,7 @@ int main(int argc, char **argv)
     
     fclose(romfile);
     
-    fprintf(stdout, "ROM: %u bytes read.", res);
+    fprintf(stdout, "ROM: %u bytes read.\n", res);
 
     if (res != 0xFFFF - arguments.romaddr + 1) {
         fprintf(stderr, "Your ROM file is too small, no data at vector table.\n");
@@ -171,16 +176,12 @@ int main(int argc, char **argv)
     uint16_t start_addr = *((uint16_t *) &memory[0xFFFC]);
     cpu.PC = start_addr;
 
-    clock_gettime(CLOCK_REALTIME, &time_old);
-    clock_gettime(CLOCK_REALTIME, &time);
-    printf("%lu - \n", time.tv_nsec - time_old.tv_nsec);
-
     while(cpu.PC != 0xFFFF) {
         clock_gettime(CLOCK_REALTIME, &time);
         printf("%lu,%lu - ", time.tv_sec, time.tv_nsec);
 
         op = memory[cpu.PC];
-        printf("Opcode: %2X ", op);
+        printf("Opcode: %02X ", op);
         cc = op & 3;
         op >>= 2;
         op |= cc << 6;
