@@ -1,10 +1,11 @@
-#ifndef __SIM_H__
-#define __SIM_H__
+#ifndef __6502_H__
+#define __6502_H__
 
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
+#include "funcs.h"
 
 #define F_N 0x80
 #define F_V 0x40
@@ -29,8 +30,6 @@ struct CPU {
     uint8_t P;
 };
 
-extern struct CPU cpu;
-extern uint8_t memory[65536];
 
 typedef void (*INSTR_FUNC)(int, uint8_t);
 
@@ -54,11 +53,14 @@ enum amode {
 
 struct op_ccaaa {
     uint8_t c;
-    uint8_t aaa;  
+    uint8_t aaa;
     enum amode addr_modes[8];
     uint8_t cycles[8];
-    INSTR_FUNC func;    
+    INSTR_FUNC func;
 };
 
-#endif
+extern struct CPU cpu;
+extern struct op_ccaaa opcodes[32];
+extern uint8_t memory[65536];
 
+#endif

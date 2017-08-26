@@ -1,5 +1,5 @@
-#include "stdio.h"
-#include "sim.h"
+#include <stdio.h>
+#include "6502.h"
 
 #define STACK_STORE16(x) \
     memory[0x100 + cpu.S--] = x >> 8; \

@@ -1,2 +1,2 @@
-sim: sim.c funcs.c
-	gcc -o sim -g sim.c funcs.c
+sim: sim.c funcs.c 6502.c
+	gcc -o sim -g sim.c funcs.c 6502.c
