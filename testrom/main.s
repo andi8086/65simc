@@ -2,7 +2,43 @@
     .SEGMENT "CODE"
 
 __init:
+   
+    LDA #0
+    STA $00
+INCREASE:
+    INC $00
+    BNE INCREASE
     
+
+ 
+    CLD
+    CLC
+    LDA #$00
+    ADC #$00
+    SEC
+    ADC #$00
+    SEC
+    SBC #$01
+   
+    CLC
+    ADC #10 
+    SEC
+    SBC #10
+    
+    SED
+    CLC
+    ADC #9
+    ADC #1
+    SEC
+    SBC #1
+    SEC 
+    SBC #9
+
+    CLD
+
+    JMP $FFFF
+
+
     LDA #$EA
     STA $200
     CMP $200

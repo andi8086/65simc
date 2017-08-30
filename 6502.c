@@ -1,3 +1,14 @@
+/***************************************************************
+ * MOS 6502 System Emulator
+ * v 0.1
+ *
+ * (c) 2017 Andreas J. Reichel
+ *
+ * h o m e b a s e _ a r (a|t]> w e b . d e
+ *
+ * License: MIT (see LICENSE.txt) 
+ ***************************************************************/
+
 #include "6502.h"
 
 struct CPU cpu;

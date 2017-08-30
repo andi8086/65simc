@@ -1,3 +1,14 @@
+/***************************************************************
+ * MOS 6502 System Emulator
+ * v 0.1
+ *
+ * (c) 2017 Andreas J. Reichel
+ *
+ * h o m e b a s e _ a r (a|t]> w e b . d e
+ *
+ * License: MIT (see LICENSE.txt) 
+ ***************************************************************/
+
 #include <stdio.h>
 #include <argp.h>
 #include "6502.h"
@@ -6,8 +17,8 @@ uint8_t memory[65536];
 
 void dumpRegs()
 {
-    printf("PC = %04X  S = %02X  A = %02X   X = %02X   Y = %02X  ", cpu.PC, cpu.S, cpu.A, cpu.X, cpu.Y);
-    printf("FLAGS = %c%c%c%c%c%c%c\n", 
+    printf("S = %02X  A = %02X   X = %02X   Y = %02X  ", cpu.S, cpu.A, cpu.X, cpu.Y);
+    printf("FLAGS = %c%c%c%c%c%c%c   ", 
         cpu.P & F_N ? 'N' : ' ',
         cpu.P & F_V ? 'V' : ' ',
         cpu.P & F_B ? 'B' : ' ',
@@ -107,10 +118,10 @@ int main(int argc, char **argv)
 
     while(cpu.PC != 0xFFFF) {
         clock_gettime(CLOCK_REALTIME, &time);
-        printf("%lu,%lu - ", time.tv_sec, time.tv_nsec);
+        printf("\n%lu,%lu - ", time.tv_sec, time.tv_nsec);
 
         op = memory[cpu.PC];
-        printf("Opcode: %02X ", op);
+        printf("%04X : %02X ", cpu.PC, op);
         cc = op & 3;
         op >>= 2;
         op |= cc << 6;

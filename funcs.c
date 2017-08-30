@@ -1,3 +1,14 @@
+/***************************************************************
+ * MOS 6502 System Emulator
+ * v 0.1
+ *
+ * (c) 2017 Andreas J. Reichel
+ *
+ * h o m e b a s e _ a r (a|t]> w e b . d e
+ *
+ * License: MIT (see LICENSE.txt) 
+ ***************************************************************/
+
 #include <stdio.h>
 #include "6502.h"
 
@@ -129,15 +140,20 @@ void group0(int a, uint8_t idx)
         return;
     case 2:            // PHP
         STACK_STORE8(cpu.P); 
+        printf("PHP = %02X", cpu.P);
         return;
     case 4:            // BPL
         if (!(cpu.P & F_N)) {
             cpu.PC += (int8_t) memory[cpu.PC];
+            printf("BPL [true]");
+        } else {
+            printf("BPL [false]");
         }
         cpu.PC++;
         return;
     case 6:            // CLC
         cpu.P &= ~ (uint8_t) F_C;
+        printf("CLC");
         return;
     }
 }
@@ -153,10 +169,12 @@ void group1(int a, uint8_t idx)
         ret_addr = cpu.PC + 2;
         STACK_STORE16(ret_addr);
         cpu.PC = *((uint16_t*) &memory[cpu.PC]);
+        printf("JSR");
         return;
     case 1:            // BIT zp
     case 3:            // BIT abs
         op = addrDecode(a);
+        printf("BIT %02X, %02X", cpu.A, op);
         if (!(*op & cpu.A)) {
             cpu.P |= F_Z;
         }
@@ -170,11 +188,15 @@ void group1(int a, uint8_t idx)
     case 4:            // BMI rel
         if (cpu.P & F_N) {
             cpu.PC += (int8_t) memory[cpu.PC];
+            printf("BMI [true]");
+        } else {
+            printf("BMI [false]");
         }
         cpu.PC++;
         return;
     case 6:            // SEC
         cpu.P |= F_C;
+        printf("SEC");
         return;
     }
 }
@@ -186,21 +208,28 @@ void group2(int a, uint8_t idx)
     case 0:            // RTI
         STACK_LOAD8(cpu.P);
         STACK_LOAD16(cpu.PC);
+        printf("RTI");
         return;
     case 2:            // PHA
         STACK_STORE8(cpu.A);
+        printf("PHA = %02X", cpu.A);
         return;
     case 3:            // JMP abs
         cpu.PC = *((uint16_t*) &memory[cpu.PC]);
+        printf("JMP");
         return;
     case 4:            // BVC
         if (!(cpu.P & F_V)) {
             cpu.PC += (int8_t) memory[cpu.PC];
+            printf("BVC [true]");
+        } else {
+            printf("BVC [false]");
         }
         cpu.PC++;
         return;
     case 6:            // CLI
         cpu.P &= ~ (uint8_t) F_I;
+        printf("CLI");
         return;
     }
 }
@@ -212,22 +241,29 @@ void group3(int a, uint8_t idx)
     switch(idx) {
     case 0:            // RTS
         STACK_LOAD16(cpu.PC);
+        printf("RTS");
         return;
     case 2:            // PLA
         STACK_LOAD8(cpu.A);
+        printf("PLA");
         return;
     case 3:            // JMP ind
         addr = *((uint16_t*) addrDecode(a));
         cpu.PC = addr;
+        printf("JMP");
         return;
     case 4:            // BVS
         if (cpu.P & F_V) {
             cpu.PC += (int8_t) memory[cpu.PC];
+            printf("BVS [true]");
+        } else {
+            printf("BVS [false]");
         }
         cpu.PC++;
         return;
     case 6:            // SEI
         cpu.P |= F_I; 
+        printf("SEI");
         return;
     }
 }
@@ -238,10 +274,19 @@ void group4(int a, uint8_t idx)
     switch(idx) {
     case 2:            // DEY
         cpu.Y--;
+        cpu.P &= F_MASK_NZ;
+        cpu.P |= cpu.Y & 0x80;
+        if (!cpu.Y) {
+            cpu.P &= F_Z;
+        }
+        printf("DEY");
         return;
     case 4:            // BCC
         if (!(cpu.P & F_C)) {
             cpu.PC += (int8_t) memory[cpu.PC];
+            printf("BCC [true]");
+        } else {
+            printf("BCC [false]");
         }
         cpu.PC++;
         return;
@@ -254,6 +299,7 @@ void group4(int a, uint8_t idx)
         if (!cpu.Y) {
             cpu.P |= F_Z;
         }
+        printf("STY / TYA");
         return;
     }
 }
@@ -265,11 +311,15 @@ void group5(int a, uint8_t idx)
     case 4:            // BCS
         if (cpu.P & F_C) {
             cpu.PC += (int8_t) memory[cpu.PC];
+            printf("BCS [true]");
+        } else {
+            printf("BCS [false]");
         }
         cpu.PC++;
         return;
     case 6:            // CLV
         cpu.P &= F_MASK_V;
+        printf("CLV");
         return;
     default:           // LDY, TAY
         cpu.Y = *addrDecode(a);
@@ -280,6 +330,7 @@ void group5(int a, uint8_t idx)
         if (!cpu.Y) {
             cpu.P |= F_Z;
         }
+        printf("LDY / TAY");
         return;
     }
 }
@@ -287,34 +338,47 @@ void group5(int a, uint8_t idx)
 void group6(int a, uint8_t idx)
 {
     int16_t erg;
-
+    uint8_t op;
     cpu.PC++;
     switch(idx) {
     case 2:            // INY
         cpu.Y++;
+        cpu.P &= F_MASK_NZ;
+        cpu.P |= cpu.Y & 0x80;
+        if (!cpu.Y) {
+            cpu.P &= F_Z;
+        }
+        printf("INY");
         return;
     case 4:            // BNE
         if (!(cpu.P & F_Z)) {
             cpu.PC += (int8_t) memory[cpu.PC];
+            printf("BNE [true]");
+        } else {
+            printf("BNE [false]");
         }
         cpu.PC++;
         return;
     case 6:            // CLD
         cpu.P &= ~ (uint8_t) F_D;
+        printf("CLD");
         return;
     default:           // CPY
-        erg = (int16_t) cpu.Y - *addrDecode(a);
+        op = *addrDecode(a);
+        erg = (int16_t) cpu.Y - op;
         cpu.P &= F_MASK_NZC;
         // set N flag
-        cpu.P |= erg & 0x80;
+        if (erg < 0)
+            cpu.P |= F_N;
         // set Z flag
         if (!erg) {
             cpu.P |= F_Z;
         }
         // set C flag
-        if (erg < 0) {
+        if (erg >= 0) {
             cpu.P |= F_C;
         }
+        printf("CPY =%02X", op);
         return;
     }
 }
@@ -323,32 +387,46 @@ void group7(int a, uint8_t idx)
 {
     cpu.PC++;
     int16_t erg;
+    uint8_t op;
     switch(idx) {
     case 2:            // INX
         cpu.X++;
+        cpu.P &= F_MASK_NZ;
+        cpu.P |= cpu.X & 0x80;
+        if (!cpu.X) {
+            cpu.P &= F_Z;
+        }
+        printf("INX");
         return;
     case 4:            // BEQ
         if (cpu.P & F_Z) {
             cpu.PC += (int8_t) memory[cpu.PC];
+            printf("BEQ [true]");
+        } else {
+            printf("BEQ [false]");
         }
         cpu.PC++;
         return;
     case 6:            // SED
         cpu.P |= F_D;
+        printf("SED");
         return;
     default:           // CPX
-        erg = (int16_t) cpu.X - *addrDecode(a);
+        op = *addrDecode(a);
+        erg = (int16_t) cpu.X - op;
         cpu.P &= F_MASK_NZC;
         // set N flag
-        cpu.P |= erg & 0x80;
+        if (erg < 0)
+            cpu.P |= F_N;
         // set Z flag
         if (!erg) {
             cpu.P |= F_Z;
         }
         // set C flag
-        if (erg < 0) {
+        if (erg >= 0) {
             cpu.P |= F_C;
         }
+        printf("CPX =%02X", op);
         return;
     }
 }
@@ -357,6 +435,7 @@ void groupORA(int a, uint8_t idx)
 {
     cpu.PC++;
     uint8_t *op = addrDecode(a);
+    printf("ORA %02X, %02X", cpu.A, *op);
     cpu.A |= *op;
     cpu.P &= F_MASK_NZ;
     cpu.P |= cpu.A & 0x80;
@@ -369,6 +448,7 @@ void groupAND(int a, uint8_t idx)
 {
     cpu.PC++;
     uint8_t *op = addrDecode(a);
+    printf("AND %02X, %02X", cpu.A, *op);
     cpu.A &= *op;
     cpu.P &= F_MASK_NZ;
     cpu.P |= cpu.A & 0x80;
@@ -381,6 +461,7 @@ void groupEOR(int a, uint8_t idx)
 {
     cpu.PC++;
     uint8_t *op = addrDecode(a);
+    printf("AND %02X, %02X", cpu.A, *op);
     cpu.A ^= *op;
     cpu.P &= F_MASK_NZ;
     cpu.P |= cpu.A & 0x80;
@@ -389,52 +470,52 @@ void groupEOR(int a, uint8_t idx)
     }
 }
 
-static void doADC(uint8_t b) {
-    uint16_t erg = (uint16_t) cpu.A + b;
-    cpu.A = (uint8_t) erg & 0xFF;
-    cpu.P &= F_MASK_NVZC;
-    if (erg > 255) {
-       cpu.P |= F_C; 
-    }
-    uint8_t a7 = cpu.A & 0x80;
-    uint8_t b7 = b & 0x80;
-    uint8_t c6 = (b & cpu.A & 0x40) << 1;
-    /* On 6502 Silicon, overflow flag is
-     *
-     * NOT (((A7 NOR B7) AND C6) NOR ((A7 NAND B7) NOR C6))
-     *
-     * I write it as
-     * (NOT(A7 OR B7) AND C6) OR NOT((A7 NAND B7) OR C6)
-     * which is
-     * (NOT(A7 OR B7) AND C6) OR NOT(NOT(A7 AND B7) OR C6)
-     * which is
-     * (NOT(A7 OR B7) AND C6) OR ((A7 AND B7) AND NOT(C6))
+void groupADC(int a, uint8_t idx)
+{
+    // This shall simulate all flags for bin and BCD correctly,
+    // even for invalid arguments, for MOS 6502 only !
     
-     * now it gets clear:
-     * wether A7 nor B7 is set (both number positive), and
-     * C6 is set, which would produce bit 7 set (negative)
-     * this is an overflow
+    cpu.PC = cpu.PC + 1;
+    uint8_t *mem = addrDecode(a);
+    uint8_t A = cpu.A;
 
-     * or, A7 and B7 ar both set, which means two negative
-     * numbers and C6 is not set, which causes bit 7 clear
-     * in the result, which is an overflow
-     */
+    printf("ADC %02X, %02X", A, *mem);
 
+    bool decimal_mode = cpu.P & F_D;
+    uint8_t c = cpu.P & F_C;
+    
+    uint16_t erg = (A & 0x0F) + ((*mem) & 0x0F) + (cpu.P & F_C);
+    if ((erg >= 0x0A) && decimal_mode) {
+        erg = ((erg + 0x06) & 0x0F) + 0x10;
+    }
+    erg += (A & 0xF0) + ((*mem) & 0xF0);
+
+    cpu.P &= F_MASK_NVZC;
+
+    // Calculate N and V here for 6502
+    // set negative flag
+    if (erg < 0)
+        cpu.P |= F_N;
+
+    // calculate V as gates given on silicon
+    uint8_t a7 = A & 0x80;
+    uint8_t b7 = *mem & 0x80;
+    uint8_t c6 = ((A & (*mem)) & 0x40) << 1;
     uint8_t v = (!(a7 | b7) & c6) | ((a7 & b7) | !c6);
     // set overflow flag
     cpu.P |= v >> 1;
-        
-    if (!cpu.A) {
-        cpu.P |= F_Z;
-    }    
-    cpu.P |= cpu.A & 0x80;
-}
 
-void groupADC(int a, uint8_t idx)
-{
-    cpu.PC = cpu.PC + 1;
-    uint8_t *mem = addrDecode(a);
-    doADC(*mem);
+    if ((erg >= 0xA0) && decimal_mode) {
+        erg += 0x60;
+    }
+    // set carry flag
+    if (erg >= 0x100) {
+        cpu.P |= F_C;
+    }
+    if (!(A + (*mem) + c)) {
+        cpu.P |= F_Z;
+    }
+    cpu.A = erg & 0xFF;
 }
 
 void groupSTA(int a, uint8_t idx)
@@ -442,6 +523,7 @@ void groupSTA(int a, uint8_t idx)
     cpu.PC = cpu.PC + 1;
     uint8_t *op = addrDecode(a);
     *op = cpu.A;
+    printf("STA =%02X", cpu.A);
 }
 
 void groupLDA(int a, uint8_t idx)
@@ -449,6 +531,7 @@ void groupLDA(int a, uint8_t idx)
     cpu.PC = cpu.PC + 1;
     uint8_t *op = addrDecode(a);
     cpu.A = *op;
+    printf("LDA =%02X", cpu.A);
     cpu.P &= F_MASK_NZ;
     cpu.P |= cpu.A & 0x80;
     if (!cpu.A) {
@@ -460,26 +543,68 @@ void groupCMP(int a, uint8_t idx)
 {
     cpu.PC++;
     int16_t erg;
-    erg = (int16_t) cpu.A - *addrDecode(a);
+    uint8_t m = *addrDecode(a);
+    erg = (int16_t) cpu.A - m;
     cpu.P &= F_MASK_NZC;
     // set N flag
-    cpu.P |= erg & 0x80;
+    if (erg < 0) 
+       cpu.P |= F_N;
+    
     // set Z flag
     if (!erg) {
         cpu.P |= F_Z;
     }
     // set C flag
-    if (erg < 0) {
+    if (erg >= 0) {
         cpu.P |= F_C;
     }
+
+    printf("CMP %02X, %02X", cpu.A, m);
 }
 
 void groupSBC(int a, uint8_t idx)
 {
+    // This shall simulate all flags for bin and BCD correctly,
+    // even for invalid arguments, for MOS 6502 only !
+
     cpu.PC++;
     // This is an ADC with negated operand
     uint8_t *mem = addrDecode(a);
-    doADC((uint8_t) -*mem);
+    uint8_t A = cpu.A;
+    printf("SBC %02X, %02X", A, *mem);
+    bool decimal_mode = cpu.P & F_D;
+    int16_t erg = (A & 0x0F) - (*mem & 0x0F) + (cpu.P & F_C) - 1;
+    if ((erg < 0) && decimal_mode) {
+        erg = ((erg - 0x06) & 0x0F) - 0x10;
+    }
+    erg += (A & 0xF0) - (*mem & 0xF0);
+    if ((erg < 0) && decimal_mode) {
+        erg -= 0x60;
+    }
+    uint8_t c = cpu.P & F_C;
+    cpu.P &= F_MASK_NVZC;
+    // Calculate N and V here for 6502
+    // set negative flag
+    if (erg < 0)
+        cpu.P |= F_N;
+
+    // calculate V as gates given on silicon
+    uint8_t a7 = A & 0x80;
+    uint8_t b7 = *mem & 0x80;
+    uint8_t c6 = ((A & *mem) & 0x40) << 1;
+    uint8_t v = (!(a7 | b7) & c6) | ((a7 & b7) | !c6);
+    // set overflow flag
+    cpu.P |= v >> 1;
+
+    // calculate carry
+    uint16_t cz = (uint16_t) A - *mem + c - 1;
+    if (cz <= 0xFF) {
+        cpu.P |= F_C;
+    }
+    if (cz == 0) {
+        cpu.P |= F_Z;
+    }
+    cpu.A = erg & 0xFF;
 }
 
 void groupASL(int a, uint8_t idx)
@@ -488,6 +613,7 @@ void groupASL(int a, uint8_t idx)
     cpu.PC++;
     switch(idx) {
     case 6:            // NOP
+        printf("NOP"); 
         return;
     default:
         m = addrDecode(a);
@@ -580,6 +706,7 @@ void groupLX(int a, uint8_t idx)
     cpu.X = *addrDecode(a);
     // TSX (idx == 6) and TAX (id == 2) affect flags, LDX (idx = 0, 1, 3, 5, 7) does not
     if (idx == 6 || idx == 2) {
+        printf("TSX/TAX =%02X", cpu.X);
         cpu.P &= F_MASK_NZ;
         // set N flag
         cpu.P |= cpu.X & 0x80;
@@ -587,6 +714,8 @@ void groupLX(int a, uint8_t idx)
             // set Z flag
             cpu.P |= F_Z;
         }
+    } else {
+        printf("LDX =%02X", cpu.X);
     }
 }
 
@@ -594,11 +723,11 @@ void groupDEC(int a, uint8_t idx)
 {
     cpu.PC++;
     uint8_t *m = addrDecode(a);
-    *m--;
+    (*m)--;
     cpu.P &= F_MASK_NZ;
     // set N flag
-    cpu.P |= cpu.X & 0x80;
-    if (!cpu.X) {
+    cpu.P |= *m & 0x80;
+    if (!*m) {
         // set Z flag
         cpu.P |= F_Z;
     }
@@ -609,14 +738,16 @@ void groupINC(int a, uint8_t idx)
     cpu.PC++;
     if (idx == 2) {
                        // NOP
+        printf("NOP");
         return;
     }
     uint8_t *m = addrDecode(a);
-    *m++;
+    printf("INC =%02X", *m);
+    (*m)++;
     cpu.P &= F_MASK_NZ;
     // set N flag
-    cpu.P |= cpu.X & 0x80;
-    if (!cpu.X) {
+    cpu.P |= *m & 0x80;
+    if (!*m) {
         // set Z flag
         cpu.P |= F_Z;
     }
