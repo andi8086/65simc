@@ -461,7 +461,7 @@ void groupEOR(int a, uint8_t idx)
 {
     cpu.PC++;
     uint8_t *op = addrDecode(a);
-    printf("AND %02X, %02X", cpu.A, *op);
+    printf("EOR %02X, %02X", cpu.A, *op);
     cpu.A ^= *op;
     cpu.P &= F_MASK_NZ;
     cpu.P |= cpu.A & 0x80;
@@ -582,19 +582,21 @@ void groupSBC(int a, uint8_t idx)
         erg -= 0x60;
     }
     uint8_t c = cpu.P & F_C;
+    int16_t x = (int8_t) cpu.A;
+    int16_t y = (int8_t) *mem;
+    int16_t e = x - y + (cpu.P & F_C) - 1;
+
     cpu.P &= F_MASK_NVZC;
     // Calculate N and V here for 6502
+
+    // set overflow flag
+    if (e < -128 || e > 127) {
+        cpu.P |= F_V;
+    }
     // set negative flag
-    if (erg < 0)
+    if (e < 0)
         cpu.P |= F_N;
 
-    // calculate V as gates given on silicon
-    uint8_t a7 = A & 0x80;
-    uint8_t b7 = *mem & 0x80;
-    uint8_t c6 = ((A & *mem) & 0x40) << 1;
-    uint8_t v = (!(a7 | b7) & c6) | ((a7 & b7) | !c6);
-    // set overflow flag
-    cpu.P |= v >> 1;
 
     // calculate carry
     uint16_t cz = (uint16_t) A - *mem + c - 1;
@@ -627,6 +629,7 @@ void groupASL(int a, uint8_t idx)
         if (!*m) {
             cpu.P |= F_Z;
         }
+        printf("ASL");
         return;
     }
 }
@@ -649,6 +652,7 @@ void groupROL(int a, uint8_t idx)
     if (!*m) {
         cpu.P |= F_Z;
     }
+    printf("ROL");
 }
 
 void groupLSR(int a, uint8_t idx)
@@ -662,7 +666,8 @@ void groupLSR(int a, uint8_t idx)
     // set Z flag
     if (!*m) {
         cpu.P |= F_Z;
-    } 
+    }
+    printf("LSR");
 }
 
 void groupROR(int a, uint8_t idx)
@@ -681,7 +686,8 @@ void groupROR(int a, uint8_t idx)
     cpu.P |= c;
     if (!*m) {
         cpu.P |= F_Z;
-    } 
+    }
+    printf("ROR");
 }
 
 void groupSX(int a, uint8_t idx)
@@ -690,6 +696,7 @@ void groupSX(int a, uint8_t idx)
     *addrDecode(a) = cpu.X;
     // TXS (idx == 6) and TXA (id == 2) affect flags, STX (idx == 1,3,5) does not
     if (idx == 6 || idx == 2) {
+        printf("TXS/TXA =%02X", cpu.X);
         cpu.P &= F_MASK_NZ;
         // set N flag
         cpu.P |= cpu.X & 0x80;
@@ -697,6 +704,8 @@ void groupSX(int a, uint8_t idx)
             // set Z flag
             cpu.P |= F_Z;
         }
+    } else {
+        printf("STX =%02X", cpu.X);
     }
 }
 
@@ -731,6 +740,7 @@ void groupDEC(int a, uint8_t idx)
         // set Z flag
         cpu.P |= F_Z;
     }
+    printf("DEC =%02X", *m);
 }
 
 void groupINC(int a, uint8_t idx)
