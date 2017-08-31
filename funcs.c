@@ -494,16 +494,19 @@ void groupADC(int a, uint8_t idx)
 
     // Calculate N and V here for 6502
     // set negative flag
-    if (erg < 0)
+    if (erg & 0x80)
         cpu.P |= F_N;
 
-    // calculate V as gates given on silicon
-    uint8_t a7 = A & 0x80;
-    uint8_t b7 = *mem & 0x80;
-    uint8_t c6 = ((A & (*mem)) & 0x40) << 1;
-    uint8_t v = (!(a7 | b7) & c6) | ((a7 & b7) | !c6);
     // set overflow flag
-    cpu.P |= v >> 1;
+    //printf("\n%d %d %d\n", (int8_t) A, (int8_t) *mem, (uint8_t) erg);
+
+    if (((int8_t) A >= 0) && ((int8_t) *mem >= 0) && (erg >= 0x80)) {
+        cpu.P |= F_V;
+
+    } else
+    if (((int8_t) A < 0) && ((int8_t) *mem < 0) && ((erg & 0xFF) < 0x80)) {
+        cpu.P |= F_V;
+    }
 
     if ((erg >= 0xA0) && decimal_mode) {
         erg += 0x60;
