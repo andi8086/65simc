@@ -571,7 +571,6 @@ void groupSBC(int a, uint8_t idx)
     // even for invalid arguments, for MOS 6502 only !
 
     cpu.PC++;
-    // This is an ADC with negated operand
     uint8_t *mem = addrDecode(a);
     uint8_t A = cpu.A;
     printf("SBC %02X, %02X", A, *mem);
