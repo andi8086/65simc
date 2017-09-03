@@ -88,6 +88,8 @@ volatile bool sim_running = true;
 volatile bool wait_clock = false;
 volatile long clock_loop, clock_loop_times;
 
+pthread_mutex_t textbuff_mutex;
+
 void *timer_func(void *threadid)
 {
     struct timespec wait_time;
@@ -105,7 +107,11 @@ void *timer_func(void *threadid)
 
 
 static cairo_surface_t *surface = NULL;
+static GtkTextBuffer *text_buff;
 
+void *update_func(void *threadid)
+{
+}
 
 static void close_window(void)
 {
@@ -155,10 +161,11 @@ static gboolean configure_cb(GtkWidget *widget, GdkEventConfigure *event, gpoint
 
     return TRUE;
 }
+    
+GtkWidget *main_window;
 
 void initMainWindow()
 {
-    GtkWidget *main_window;
 
     gtk_init(0, NULL);
 
@@ -174,22 +181,55 @@ void initMainWindow()
     gtk_container_add(GTK_CONTAINER(main_window), frame);
 
 
-    GtkWidget *drawing_area = gtk_drawing_area_new();
-    gtk_widget_set_size_request(drawing_area, 420, 312);
+//    GtkWidget *drawing_area = gtk_drawing_area_new();
+//    gtk_widget_set_size_request(drawing_area, 420, 312);
 
-    gtk_container_add(GTK_CONTAINER(frame), drawing_area);
+//    gtk_container_add(GTK_CONTAINER(frame), drawing_area);
 
-    g_signal_connect(drawing_area, "draw", G_CALLBACK(draw_cb), NULL);
+//    g_signal_connect(drawing_area, "draw", G_CALLBACK(draw_cb), NULL);
     //g_signal_connect(drawing_area, "configure-event", G_CALLBACK(configure_cb), NULL);
+
+    text_buff = gtk_text_buffer_new(NULL);
+   
+    GtkWidget *text_widget = gtk_text_view_new_with_buffer(text_buff);
+ 
+    gtk_container_add(GTK_CONTAINER(frame), text_widget);
+
+    PangoFontDescription *df;
+
+    df = pango_font_description_from_string("Monospace");
+
+    pango_font_description_set_size(df, 12*PANGO_SCALE);
+    gtk_widget_override_font(text_widget, df);
+
 
     gtk_widget_show_all(main_window);
 }
 
 void *gtk_main_func(void *data)
 {
+    char buffer[256];
+    GtkTextIter start_iter;
+    GtkTextIter end_iter;
+    
     while(sim_running) {
-        if (gtk_events_pending()) {
-            gtk_main_iteration();
+
+        gtk_text_buffer_get_start_iter(text_buff, &start_iter);
+        gtk_text_buffer_get_end_iter(text_buff, &end_iter);
+        gtk_text_buffer_delete(text_buff, &start_iter, &end_iter);
+        for (uint16_t i = 0; i < 0x100; i++) {
+                if (i % 0x10 == 0) {
+                    sprintf(buffer, "\n%02X : ", i);
+                    gtk_text_buffer_insert(text_buff, &start_iter, buffer, -1);
+                }
+                sprintf(buffer, "%02X ", memory[i]);
+                gtk_text_buffer_insert(text_buff, &start_iter, buffer, -1);
+        }
+        gtk_widget_queue_draw(main_window);
+
+    
+        for (int i = 0; i < 1000; i++) {
+            gtk_main_iteration_do(FALSE);
         }
     }
 
@@ -200,6 +240,7 @@ int main(int argc, char **argv)
 {
     pthread_t timer_thread;
     pthread_t gtk_thread;
+    pthread_t update_thread;
 
     struct arguments arguments;
 
@@ -215,6 +256,7 @@ int main(int argc, char **argv)
     uint8_t op, cycles;
     struct timespec time;
 
+    pthread_mutex_init(&textbuff_mutex, NULL);
     initMainWindow();
 
     /* Get timer resolution */
