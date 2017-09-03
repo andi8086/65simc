@@ -1,0 +1,32 @@
+{
+    "name": "system1",
+    "cpu": {
+        "type": "6502",
+        "speed": "1E6"
+    },
+    "ram": {
+        "start": "0x0000",
+        "end": "0x7FFF" 
+    },
+    "rom": {
+        "start": "0xC000",
+        "end": "0xFFFF",
+        "file": "testrom/rom.bin"
+    },
+    "chip": {
+        "type": "6522",
+        "addr": "0x8040",
+        "portA": "P1",
+        "portB": "P2"
+    },
+    "chip": {
+        "type": "6551",
+        "addr": "0x8020",
+        "serial": "/dev/ptmx"
+    },
+    "chip": {
+        "type": "AY-3-8910",
+        "data": "P1[0,7]",
+        "control": "P2[0,1]"
+    }
+}
