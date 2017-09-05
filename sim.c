@@ -18,7 +18,7 @@
 #include <gtk/gtk.h>
 #include "gui.h"
 #include "cfg.h"
-
+#include "sim.h"
 #include "6502.h"
 
 #define F_CYC_NSEC 1000
@@ -87,30 +87,29 @@ static struct argp argp = {
     options, parse_opt, 0, doc
 };
 
-volatile bool sim_running = true;
-volatile bool wait_clock = false;
 volatile long clock_loop, clock_loop_times;
 
-pthread_mutex_t textbuff_mutex;
-
-void *timer_func(void *threadid)
+void *timer_func(void *s)
 {
     struct timespec wait_time;
+    sim65_t *state = (sim65_t *)s;
             
-    while(sim_running) {
+    while(state->running) {
 
         for (long i = 0; i < clock_loop_times; i++) {
             asm("nop;nop;nop;nop;nop;nop;nop;nop;nop;nop");
         }
 
-        wait_clock = false;
-        while(!wait_clock & sim_running);
+        state->sync_clock = false;
+        while(!state->sync_clock & state->running);
     }
 }
 
 void *update_func(void *threadid)
 {
 }
+
+static volatile sim65_t sim = { 0 };
 
 int main(int argc, char **argv)
 {
@@ -189,15 +188,17 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
+    sim.running = true;
+
     /* Create timer thread */
-    int rc = pthread_create(&timer_thread, NULL, timer_func, NULL);
+    int rc = pthread_create(&timer_thread, NULL, timer_func, &sim);
     if (rc) {
         fprintf(stderr, "Cannot create timer thread.\n");
         exit(-1);
     }
 
     /* Create gtk thread */
-    rc = pthread_create(&gtk_thread, NULL, gtk_main_func, NULL);
+    rc = pthread_create(&gtk_thread, NULL, gtk_main_func, &sim);
     if (rc) {
         fprintf(stderr, "Cannot create gtk thread.\n");
         exit(-1);
@@ -254,17 +255,17 @@ int main(int argc, char **argv)
         }
 
         // signal the timing thread that it can start counting
-        wait_clock = true;
+        sim.sync_clock = true;
 
         // parallely, execute CPU instruction
         opcodes[idx].func(a, op & 7);
 
         // wait remaining counts done by timing thread
-        while(wait_clock);
+        while(sim.sync_clock);
     }
 
     // signal the timing thread that it must stop
-    sim_running = false;
+    sim.running = false;
     
     pthread_join(timer_thread, NULL);
     pthread_join(gtk_thread, NULL);

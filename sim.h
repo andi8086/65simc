@@ -3,6 +3,10 @@
 
 #include <stdbool.h>
 
-extern volatile bool sim_running;
+
+typedef struct {
+    bool running;
+    bool sync_clock;
+} sim65_t;
 
 #endif //__SIM_H__

@@ -157,13 +157,13 @@ void initMainWindow(void)
     gtk_widget_show_all(main_window);
 }
 
-void *gtk_main_func(void *data)
+void *gtk_main_func(void *s)
 {
     char buffer[256];
     GtkTextIter start_iter;
     GtkTextIter end_iter;
     
-    while(sim_running) {
+    while(((sim65_t *)s)->running) {
 
         gtk_text_buffer_get_start_iter(text_buff, &start_iter);
         gtk_text_buffer_get_end_iter(text_buff, &end_iter);
