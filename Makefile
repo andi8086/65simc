@@ -11,6 +11,8 @@ SRCS=sim.c \
      gui.c \
      cfg.c
 
+.PHONY: sim
+
 all: sim
 
 sim:
