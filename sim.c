@@ -16,8 +16,8 @@
 #include <argp.h>
 
 #include <gtk/gtk.h>
-
-#include "jsmn/jsmn.h"
+#include "gui.h"
+#include "cfg.h"
 
 #include "6502.h"
 
@@ -108,261 +108,8 @@ void *timer_func(void *threadid)
     }
 }
 
-
-static cairo_surface_t *surface = NULL;
-static GtkTextBuffer *text_buff;
-static GtkTextBuffer *status_text_buff;
-
 void *update_func(void *threadid)
 {
-}
-
-static void close_window(void)
-{
-    if (surface) {
-        cairo_surface_destroy(surface);
-    }
-}
-
-static void clear_surface()
-{
-    cairo_t *cr;
-
-    cr = cairo_create(surface);
-
-    cairo_set_source_rgb(cr, 1, 1, 1);
-    cairo_paint(cr);
-
-    cairo_destroy(cr);
-}
-
-static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data)
-{
-/*    cairo_set_source_surface(cr, surface, 0, 0);
-    cairo_paint(cr);
-*/
-    cairo_set_source_rgb(cr, 0, 0, 1);
-    cairo_set_line_width(cr, 8);
-    cairo_rectangle(cr, 0, 0, 210, 156);
-    cairo_stroke_preserve(cr);
-    cairo_fill(cr);
-
-    return FALSE;
-}
-
-static gboolean configure_cb(GtkWidget *widget, GdkEventConfigure *event, gpointer data)
-{
-    if (surface) {
-        cairo_surface_destroy(surface);
-    }
-
-    surface = gdk_window_create_similar_surface(gtk_widget_get_window(widget),
-                                                CAIRO_CONTENT_COLOR,
-                                                gtk_widget_get_allocated_width(widget),
-                                                gtk_widget_get_allocated_height(widget));
-
-    clear_surface();
-
-    return TRUE;
-}
-    
-GtkWidget *main_window;
-
-GtkWidget *initMainmenu()
-{
-    GtkWidget *file_menu;
-
-    file_menu = gtk_menu_new();
-    /* Create the menu items */
-    GtkWidget *open_item = gtk_menu_item_new_with_label ("Open");
-    GtkWidget *save_item = gtk_menu_item_new_with_label ("Save");
-    GtkWidget *quit_item = gtk_menu_item_new_with_label ("Quit");
-
-    /* Add them to the menu */
-    gtk_menu_shell_append (GTK_MENU_SHELL(file_menu), open_item);
-    gtk_menu_shell_append (GTK_MENU_SHELL(file_menu), save_item);
-    gtk_menu_shell_append (GTK_MENU_SHELL(file_menu), quit_item);
-
-    GtkWidget *menu_bar = gtk_menu_bar_new();
-
-    GtkWidget *file_item = gtk_menu_item_new_with_label ("File");
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_item), file_menu);
-    
-    gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
-
-    return menu_bar;
-}
-
-void initMainWindow()
-{
-
-    gtk_init(0, NULL);
-
-    main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(main_window), "65simC");
-    gtk_window_set_default_size(GTK_WINDOW(main_window), 1024, 768);
-
-    GtkWidget *vbox = gtk_vbox_new(FALSE, 0);
-    gtk_container_add(GTK_CONTAINER(main_window), vbox);
- 
-
-    g_signal_connect(main_window, "destroy", G_CALLBACK(close_window), NULL);
-    gtk_container_set_border_width(GTK_CONTAINER(main_window), 8);
-
-    GtkWidget *main_menu = initMainmenu();
-//    gtk_container_add(GTK_CONTAINER(main_window), main_menu);
-    gtk_box_pack_start(GTK_BOX(vbox), main_menu, FALSE, FALSE, 0);
-
-
-    GtkWidget *frame = gtk_frame_new(NULL);
-    gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_IN);
-
-    GtkWidget *hbox = gtk_hbox_new(FALSE, 0);
-    gtk_container_add(GTK_CONTAINER(vbox), hbox);
-
-
-//    gtk_container_add(GTK_CONTAINER(hbox), frame);
-
-
-//    GtkWidget *drawing_area = gtk_drawing_area_new();
-//    gtk_widget_set_size_request(drawing_area, 420, 312);
-
-//    gtk_container_add(GTK_CONTAINER(frame), drawing_area);
-
-//    g_signal_connect(drawing_area, "draw", G_CALLBACK(draw_cb), NULL);
-    //g_signal_connect(drawing_area, "configure-event", G_CALLBACK(configure_cb), NULL);
-
-    text_buff = gtk_text_buffer_new(NULL);
-    status_text_buff = gtk_text_buffer_new(NULL);
-   
-    GtkWidget *text_widget = gtk_text_view_new_with_buffer(text_buff);
-    GtkWidget *status_widget = gtk_text_view_new_with_buffer(status_text_buff);
-
-    gtk_text_view_set_editable((GtkTextView *)text_widget, FALSE);
-    gtk_text_view_set_editable((GtkTextView *)status_widget, FALSE);
-
-    gtk_text_view_set_cursor_visible((GtkTextView *)text_widget, FALSE);
-    gtk_text_view_set_cursor_visible((GtkTextView *)status_widget, FALSE);
-    
-    GdkRGBA gcolor = {0.0, 0.05, 0.0, 1.0};
-    GdkRGBA gcolor2 = {0.3, 1.0, 0.3, 1.0};
-    gtk_widget_override_background_color(text_widget, GTK_STATE_FLAG_NORMAL, &gcolor);
-    gtk_widget_override_color(text_widget, GTK_STATE_FLAG_NORMAL, &gcolor2);
-    
-    GdkRGBA gcolor3 = {0.0, 0.0, 0.05, 1.0};
-    GdkRGBA gcolor4 = {0.3, 0.3, 1.0, 1.0};
-    gtk_widget_override_background_color(status_widget, GTK_STATE_FLAG_NORMAL, &gcolor3);
-    gtk_widget_override_color(status_widget, GTK_STATE_FLAG_NORMAL, &gcolor4);
-
-    gtk_container_add(GTK_CONTAINER(hbox), status_widget);
-    gtk_container_add(GTK_CONTAINER(hbox), text_widget);
-
-    PangoFontDescription *df;
-
-    df = pango_font_description_from_string("Monospace");
-
-    pango_font_description_set_size(df, 12*PANGO_SCALE);
-    gtk_widget_override_font(text_widget, df);
-    gtk_widget_override_font(status_widget, df);
-
-    gtk_widget_show_all(main_window);
-}
-
-void *gtk_main_func(void *data)
-{
-    char buffer[256];
-    GtkTextIter start_iter;
-    GtkTextIter end_iter;
-    
-    while(sim_running) {
-
-        gtk_text_buffer_get_start_iter(text_buff, &start_iter);
-        gtk_text_buffer_get_end_iter(text_buff, &end_iter);
-        gtk_text_buffer_delete(text_buff, &start_iter, &end_iter);
-        for (uint16_t i = 0; i < 0x100; i++) {
-                if (i % 0x10 == 0) {
-                    sprintf(buffer, "\n %02X : ", i);
-                    gtk_text_buffer_insert(text_buff, &start_iter, buffer, -1);
-                }
-                sprintf(buffer, "%02X ", memory[i]);
-                gtk_text_buffer_insert(text_buff, &start_iter, buffer, -1);
-        }
-        gtk_text_buffer_get_start_iter(status_text_buff, &start_iter);
-        gtk_text_buffer_get_end_iter(status_text_buff, &end_iter);
-        gtk_text_buffer_delete(status_text_buff, &start_iter, &end_iter);
-        sprintf(buffer, "\n PC = %04X\n S = %02X  A = %02X\n X = %02X   Y = %02X  ",
-                cpu.PC, cpu.S, cpu.A, cpu.X, cpu.Y);
-        gtk_text_buffer_insert(status_text_buff, &start_iter, buffer, -1);
-        sprintf(buffer, "\n FLAGS = %c%c%c%c%c%c%c   ", 
-        cpu.P & F_N ? 'N' : ' ',
-        cpu.P & F_V ? 'V' : ' ',
-        cpu.P & F_B ? 'B' : ' ',
-        cpu.P & F_D ? 'D' : ' ',
-        cpu.P & F_I ? 'I' : ' ',
-        cpu.P & F_Z ? 'Z' : ' ',
-        cpu.P & F_C ? 'C' : ' ');
-        gtk_text_buffer_insert(status_text_buff, &start_iter, buffer, -1);
-
-//        gtk_widget_queue_draw(main_window);
-    
-        for (int i = 0; i < 1000; i++) {
-            gtk_main_iteration_do(FALSE);
-        }
-    }
-
-    pthread_exit(NULL);
-}
-
-void config_parse(jsmntok_t **jtok, char *jbuffer, int jref);
-
-void config_parse_cpu(jsmntok_t **jtok, char *jbuffer, int jref)
-{
-    char buffer[256];
-    
-    int children = (*jtok)->size;
-    
-    printf("\n\n ** CPU ** \n\n");
-
-    for (int i = 0; i < children; i++) {
-        (*jtok)++;
-        int start = (*jtok)->start;
-        int end = (*jtok)->end;
-        jsmntype_t type = (*jtok)->type;
-        snprintf(buffer, end-start+1, "%s", (char *)(jbuffer + start));
-        buffer[end-start+1] = '\0';
-
-        config_parse(jtok, jbuffer, jref+1);
-    
-    }
-}
-
-void config_parse(jsmntok_t **jtok, char *jbuffer, int jref)
-{
-    char buffer[256];
-
-    int children = (*jtok)->size;
-    printf("children: %d, level: %d\n", children, jref);
-    for (int i = 0; i < children; i++) {
-        (*jtok)++;
-        int start = (*jtok)->start;
-        int end = (*jtok)->end;
-        jsmntype_t type = (*jtok)->type;
-        snprintf(buffer, end-start+1, "%s", (char *)(jbuffer + start));
-        buffer[end-start+1] = '\0';
-        printf("child: %d, %d - %s\n", i, (int) type, buffer);
-
-        switch(type) {
-        case JSMN_STRING:
-            if (strncmp("cpu", buffer, strlen("cpu")+1) == 0) {
-                config_parse_cpu(jtok, jbuffer, jref+1);
-                break;
-            }
-        default:
-            config_parse(jtok, jbuffer, jref+1);
-            break;
-        }
-
-    }
 }
 
 int main(int argc, char **argv)
@@ -437,46 +184,10 @@ int main(int argc, char **argv)
     uint16_t start_addr = *((uint16_t *) &memory[0xFFFC]);
     cpu.PC = start_addr;
 
-
-    
-    char jbuffer[16384];
-    FILE *configfile = fopen("system1.json", "r");
-    fread(jbuffer, 1, 16383, configfile);
-    fclose(configfile);
-
-    jsmn_parser parser;
-    jsmntok_t tokens[128];
-    
-    jsmn_init(&parser);
-    int jtk = jsmn_parse(&parser, jbuffer, strlen(jbuffer), tokens, 128);
-    if (jtk < 0) {
-        switch(jtk) {
-        case JSMN_ERROR_INVAL:
-            fprintf(stderr, "Error, config json corrupted.\n");
-            exit(-1);
-            break;
-        case JSMN_ERROR_NOMEM:
-            fprintf(stderr, "Out of memory while parsing config json.\n");
-            exit(-1);
-            break;
-        case JSMN_ERROR_PART:
-            fprintf(stderr, "Unexpected end of json config data.\n");
-            exit(-1);
-            break;
-        default:
-            fprintf(stderr, "Unknown json parser error.\n");
-            exit(-1);
-            break;
-        }
+    if (read_config_json("system1.json")) {
+        fprintf(stderr, "Error reading config spec\n");
+        exit(-1);
     }
-
-
-    jsmntok_t *jtok = tokens;
-    config_parse(&jtok, jbuffer, 0);
-
-
-    exit(0);
-
 
     /* Create timer thread */
     int rc = pthread_create(&timer_thread, NULL, timer_func, NULL);
@@ -554,6 +265,9 @@ int main(int argc, char **argv)
 
     // signal the timing thread that it must stop
     sim_running = false;
-
-    pthread_exit(NULL);
+    
+    pthread_join(timer_thread, NULL);
+    pthread_join(gtk_thread, NULL);
+    
+    exit(0);
 }
