@@ -9,7 +9,8 @@ SRCS=sim.c \
      6502.c \
      jsmn/jsmn.c \
      gui.c \
-     cfg.c
+     cfg.c \
+     clock_sync.c
 
 .PHONY: sim
 

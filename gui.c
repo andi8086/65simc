@@ -163,7 +163,9 @@ void *gtk_main_func(void *s)
     GtkTextIter start_iter;
     GtkTextIter end_iter;
     
-    while(((sim65_t *)s)->running) {
+    sim65_t *sim = (sim65_t *)s;
+
+    while(sim->running) {
 
         gtk_text_buffer_get_start_iter(text_buff, &start_iter);
         gtk_text_buffer_get_end_iter(text_buff, &end_iter);
@@ -190,6 +192,10 @@ void *gtk_main_func(void *s)
         cpu.P & F_I ? 'I' : ' ',
         cpu.P & F_Z ? 'Z' : ' ',
         cpu.P & F_C ? 'C' : ' ');
+        gtk_text_buffer_insert(status_text_buff, &start_iter, buffer, -1);
+
+        sprintf(buffer, "\n\n timing error: %.4f%%", (sim->timerstat - 1.0) * 100.0);
+
         gtk_text_buffer_insert(status_text_buff, &start_iter, buffer, -1);
 
 //        gtk_widget_queue_draw(main_window);

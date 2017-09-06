@@ -21,8 +21,7 @@
 #include "cfg.h"
 #include "sim.h"
 #include "6502.h"
-
-#define F_CYC_NSEC 1000
+#include "clock_sync.h"
 
 uint8_t memory[65536];
 
@@ -91,11 +90,14 @@ static struct argp argp = {
 void *timer_func(void *s)
 {
     struct timespec wait_time;
-    volatile sim65_t *state = (sim65_t *)s;
+    sim65_t *state = (sim65_t *)s;
+
     while(state->running) {
 
-        for (long i = 0; i < state->clock_loop_times; i++) {
-            asm volatile("nop;");
+        if (state->inst_cycles <= 3) {
+            delay_sync_cycle_loop(state);
+        } else {
+            delay_sync_cycle_timer(state);
         }
 
         state->sync_clock = false;
@@ -107,7 +109,7 @@ void *update_func(void *threadid)
 {
 }
 
-static volatile sim65_t sim = { 0 };
+static sim65_t sim = { 0 };
 
 int main(int argc, char **argv)
 {
@@ -127,39 +129,13 @@ int main(int argc, char **argv)
     uint8_t cc, idx;
     enum amode a;
     uint8_t op; 
-    unsigned long initial_clock_loop;
-    volatile uint8_t cycles;
-    struct timespec time;
 
     initMainWindow();
 
-    /* Get timer resolution */
-    clock_getres(CLOCK_REALTIME, &time);
-    fprintf(stdout, "Realtime clock resolution: %lu ns\n", time.tv_nsec);
-
-    /* Callibrate time delay */
-    struct timespec oldtime;
-    clock_gettime(CLOCK_REALTIME, &oldtime);
-
-    for (long j = 0; j < 2E8; j++) {
-        asm volatile("nop;");
+    if (delay_sync_cycle_init(&sim)) {
+        fprintf(stderr, "Error initializing cycle timers\n");
+        exit(-1);
     }
-    clock_gettime(CLOCK_REALTIME, &time);
-
-    long delta_ns = time.tv_nsec - oldtime.tv_nsec;
-    long delta_s = time.tv_sec - oldtime.tv_sec;
-    double delta = (double) delta_s + 1.0E-9 * delta_ns;
-    delta *= 1.0E9;
-    printf("delta = %f ns\n", delta);
-
-    double factor = F_CYC_NSEC / delta;
-    printf("factor = %.9f\n", factor);
-
-    /* initial value */
-    cycles = 0;
-    sim.clock_loop = (long) round(2.0E8 * factor);
-    printf("clock_loop = %lu\n", sim.clock_loop);
-    sim.clock_loop_times = sim.clock_loop * cycles;
 
     /* Initialize stack pointer */
     cpu.S = 0xFF;
@@ -194,6 +170,7 @@ int main(int argc, char **argv)
 
     sim.running = true;
 
+    /*
     int priority = 99;
     pthread_attr_t tattr;
     struct sched_param spar;
@@ -202,9 +179,10 @@ int main(int argc, char **argv)
     pthread_attr_getschedparam(&tattr, &spar);
     spar.sched_priority = priority;
     pthread_attr_setschedparam(&tattr, &spar);
+    */
 
     /* Create timer thread */
-    int rc = pthread_create(&timer_thread, &tattr, timer_func, &sim);
+    int rc = pthread_create(&timer_thread, NULL, timer_func, &sim);
     if (rc) {
         fprintf(stderr, "Cannot create timer thread.\n");
         exit(-1);
@@ -218,19 +196,33 @@ int main(int argc, char **argv)
     }
 
     unsigned long oldns = 999999999;
+    struct timespec time, oldtime;
     long cdelta;
+
+    sim.timerstat = 0.0;
+    sim.cyclecount = 0;
+
     while(cpu.PC != 0xFFFF) {
+
         clock_gettime(CLOCK_REALTIME, &time);
 
-        /* fine tuning */
-        if (cycles) {
-            cdelta = time.tv_nsec - oldns;
-            if (cdelta < 0) {
-                cdelta += 9999999999;
-            }
-            long expected_time = F_CYC_NSEC * cycles;
-            /* correct clock sync loop */
-            double factor = (double) expected_time / cdelta;
+        /* fine tuning (for fastest instructions only) */
+        cdelta = time.tv_nsec - oldns;
+        if (cdelta < 0) {
+            cdelta += 9999999999;
+        }
+        long expected_time = F_CYC_NSEC * sim.inst_cycles;
+        /* correct clock sync loop */
+        double factor = (double) expected_time / cdelta;
+        sim.cyclecount++;
+        if (sim.cyclecount == 1) {
+            sim.timerstat = factor;
+        } else {
+            sim.timerstat += (factor - sim.timerstat) / (double) sim.cyclecount;
+        }
+
+
+        if (sim.inst_cycles <= 3) {
             if (factor < 2.0 && factor > 0.5) {
                 sim.clock_loop = (unsigned long) round(sim.clock_loop * factor);
             }
@@ -258,13 +250,13 @@ int main(int argc, char **argv)
         a = opcodes[idx].addr_modes[op & 7];
 
         // bbb also gives number of cycles
-        cycles = opcodes[idx].cycles[op & 7];
+        sim.inst_cycles = opcodes[idx].cycles[op & 7];
 
         // calculate needed timing loop counts
-        sim.clock_loop_times = sim.clock_loop * cycles;
+        sim.clock_loop_times = sim.clock_loop * sim.inst_cycles;
             
         printf("\n%lu,%09lu - ", time.tv_sec, time.tv_nsec);
-        printf(" CYC = %u ", cycles);
+        printf(" CYC = %u ", sim.inst_cycles);
 
         if (arguments.debug_regs) {
             printf("%04X : %02X ", cpu.PC, op);
