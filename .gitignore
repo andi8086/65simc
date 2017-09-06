@@ -1,0 +1,6 @@
+.gitignore
+*.o
+*.lst
+*.bin
+*.yml
+*.txt
