@@ -109,6 +109,31 @@ void *update_func(void *threadid)
 {
 }
 
+void add_chip(sim65_t *sim, icircuit *chip)
+{
+    icircuit **insert_at = &sim->circuit;
+    
+    while (*insert_at) insert_at = &(*insert_at)->next;
+        
+    *insert_at = chip;
+}
+
+void foreach_chip(sim65_t *sim, ChipFunc func)
+{
+    icircuit *chip = sim->circuit;
+    
+    do {
+        func(chip);
+        chip = chip->next;
+    } while(chip);
+
+}
+
+void *reset_chip(struct icircuit *self)
+{
+    self->do_reset(self);
+}
+
 static sim65_t sim = { 0 };
 
 int main(int argc, char **argv)
@@ -130,12 +155,6 @@ int main(int argc, char **argv)
     enum amode a;
     uint8_t op; 
 
-    initMainWindow();
-
-    if (delay_sync_cycle_init(&sim)) {
-        fprintf(stderr, "Error initializing cycle timers\n");
-        exit(-1);
-    }
 
     /* Initialize stack pointer */
     cpu.S = 0xFF;
@@ -163,8 +182,19 @@ int main(int argc, char **argv)
     uint16_t start_addr = *((uint16_t *) &memory[0xFFFC]);
     cpu.PC = start_addr;
 
-    if (read_config_json("system1.json")) {
+    if (read_config_json(&sim, "system1.json")) {
         fprintf(stderr, "Error reading config spec\n");
+        exit(-1);
+    }
+   
+    foreach_chip(&sim, (ChipFunc) reset_chip);
+ 
+    exit(0);
+
+    initMainWindow();
+
+    if (delay_sync_cycle_init(&sim)) {
+        fprintf(stderr, "Error initializing cycle timers\n");
         exit(-1);
     }
 

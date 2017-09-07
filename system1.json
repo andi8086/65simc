@@ -5,23 +5,23 @@
         "speed": "1E6"
     },
     "ram": {
-        "start": "0x0000",
-        "end": "0x7FFF" 
+        "start": "0000",
+        "end": "7FFF" 
     },
     "rom": {
-        "start": "0xC000",
-        "end": "0xFFFF",
+        "start": "C000",
+        "end": "FFFF",
         "file": "testrom/rom.bin"
     },
     "chip": {
         "type": "6522",
-        "addr": "0x8040",
+        "addr": "8040",
         "portA": "P1",
         "portB": "P2"
     },
     "chip": {
         "type": "6551",
-        "addr": "0x8020",
+        "addr": "8020",
         "serial": "/dev/ptmx"
     },
     "chip": {
