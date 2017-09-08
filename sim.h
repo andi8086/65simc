@@ -11,11 +11,14 @@ typedef icircuit (*ChipCtor)(uint16_t addr);
 
 typedef struct icircuit {
     void *registerfile;
+    uint16_t regsize;
     uint16_t address;
     ChipFunc pulse_clock;
     ChipFunc do_reset;
     icircuit *next;
     ChipFunc dtor;
+    ChipFunc sync_read;
+    ChipFunc sync_write;
 } icircuit;
 
 typedef struct {

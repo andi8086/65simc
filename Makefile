@@ -7,6 +7,7 @@ CCFLAGS=-Wno-deprecated-declarations \
 SRCS=sim.c \
      funcs.c \
      6502.c \
+	 mem.c \
      jsmn/jsmn.c \
      gui.c \
      cfg.c \

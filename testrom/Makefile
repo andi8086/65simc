@@ -1,4 +1,4 @@
-all: rom.bin dectest.bin cmptest.bin dectest2.bin
+all: rom.bin dectest.bin cmptest.bin dectest2.bin iotest.bin
 
 rom.bin: main.o
 	ld65 $^ -C rom.cfg -o rom.bin
@@ -11,6 +11,9 @@ dectest2.bin: dectest2.o
 
 cmptest.bin: cmptest.o
 	ld65 $^ -C cmptest.cfg -o cmptest.bin
+
+iotest.bin: iotest.o
+	ld65 $^ -C iotest.cfg -o iotest.bin
 
 %.o: %.s
 	ca65 $< -l $<.lst

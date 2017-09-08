@@ -21,6 +21,7 @@
 #include "cfg.h"
 #include "sim.h"
 #include "6502.h"
+#include "mem.h"
 #include "clock_sync.h"
 
 uint8_t memory[65536];
@@ -103,6 +104,7 @@ void *timer_func(void *s)
         state->sync_clock = false;
         while(!state->sync_clock & state->running);
     }
+    pthread_exit(NULL);
 }
 
 void *update_func(void *threadid)
@@ -141,6 +143,7 @@ int main(int argc, char **argv)
     pthread_t timer_thread;
     pthread_t gtk_thread;
     pthread_t update_thread;
+    pthread_t sync_chip_access_thread;
 
     struct arguments arguments;
 
@@ -189,8 +192,6 @@ int main(int argc, char **argv)
    
     foreach_chip(&sim, (ChipFunc) reset_chip);
  
-    exit(0);
-
     initMainWindow();
 
     if (delay_sync_cycle_init(&sim)) {
@@ -215,6 +216,13 @@ int main(int argc, char **argv)
     int rc = pthread_create(&timer_thread, NULL, timer_func, &sim);
     if (rc) {
         fprintf(stderr, "Cannot create timer thread.\n");
+        exit(-1);
+    }
+
+    /* Create thread for syncing chip accesses */
+    rc = pthread_create(&sync_chip_access_thread, NULL, sync_mem_access, &sim);
+    if (rc) {
+        fprintf(stderr, "Cannot create gtk thread.\n");
         exit(-1);
     }
 
@@ -299,6 +307,9 @@ int main(int argc, char **argv)
         // parallely, execute CPU instruction
         opcodes[idx].func(a, op & 7);
 
+        // all chips should sync in time
+        while(mem_sync);
+
         // wait remaining counts done by timing thread
         while(sim.sync_clock);
     }
@@ -308,6 +319,6 @@ int main(int argc, char **argv)
     
     pthread_join(timer_thread, NULL);
     pthread_join(gtk_thread, NULL);
-    
+    pthread_join(sync_chip_access_thread, NULL); 
     exit(0);
 }

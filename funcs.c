@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include "6502.h"
+#include "mem.h"
 
 #define STACK_STORE16(x) \
     memory[0x100 + cpu.S--] = x >> 8; \
@@ -25,7 +26,6 @@
 
 #define STACK_LOAD8(x) \
     x = memory[0x100 + ++cpu.S];
-
 
 uint8_t *addrDecode(enum amode a)
 {
@@ -45,6 +45,7 @@ uint8_t *addrDecode(enum amode a)
         // Byte after opcode is zero page index
         idx_lo = memory[cpu.PC - 1];
         // Return address of this memory cell
+        mem_addr = idx_lo;
         return &memory[idx_lo];
     case aabs: /* $0000 */
         cpu.PC += 2;
@@ -52,7 +53,8 @@ uint8_t *addrDecode(enum amode a)
         idx_lo = memory[cpu.PC - 2];
         idx_hi = memory[cpu.PC - 1];
         // Return address of this memory cell
-        return &memory[(uint16_t) idx_hi << 8 | idx_lo];
+        mem_addr = (uint16_t) idx_hi << 8 | idx_lo;
+        return &memory[mem_addr];
     case arel: /* PC + $0000 */
         return 0;
     case azpx: /* $00, X */
@@ -61,28 +63,32 @@ uint8_t *addrDecode(enum amode a)
         idx_lo = memory[cpu.PC - 1];
         // X-Register is added to this index
         // This wraps around to stay in zero page
-        return &memory[(cpu.X + idx_lo) & 0xFF];
+        mem_addr = (uint16_t) (cpu.X + idx_lo) & 0xFF;
+        return &memory[mem_addr];
     case azpy: /* $00, Y */
         cpu.PC += 1;
         // Byte after opcode is zero page index
         idx_lo = memory[cpu.PC - 1];
         // Y-Register is added to this index
         // This wraps around to stay in zero page 
-        return &memory[(cpu.Y + idx_lo) & 0xFF];
+        mem_addr = (cpu.Y + idx_lo) & 0xFF;
+        return &memory[mem_addr];
     case aabx: /* $0000, X */
         cpu.PC += 2;
         // Word after opcode is absolute address
         idx_lo = memory[cpu.PC - 2];
         idx_hi = memory[cpu.PC - 1];
         // X-Register is added to this absolute address
-        return &memory[(uint16_t) idx_hi << 8 | idx_lo + cpu.X];
+        mem_addr = (uint16_t) idx_hi << 8 | idx_lo + cpu.X;
+        return &memory[mem_addr];
     case aaby: /* $0000, Y */
         cpu.PC += 2;
         // Word after opcode is absolute address
         idx_lo = memory[cpu.PC - 2];
         idx_hi = memory[cpu.PC - 1];
         // Y-Register is added to this absolute address
-        return &memory[(uint16_t) idx_hi << 8 | idx_lo + cpu.Y];
+        mem_addr = (uint16_t) idx_hi << 8 | idx_lo + cpu.Y;
+        return &memory[mem_addr];
     case aind: /* ($0000) */
         cpu.PC += 2;
         idx_lo = memory[cpu.PC - 2];
@@ -90,6 +96,7 @@ uint8_t *addrDecode(enum amode a)
         // Word after opcode is a pointer to the address
         addr = memory[(uint16_t) idx_hi << 8 | idx_lo];
         // Return address to where this address points
+        mem_addr = addr;
         return &memory[addr];
     case aizx: /* ($00, X) */
         cpu.PC += 1;
@@ -100,7 +107,8 @@ uint8_t *addrDecode(enum amode a)
         idx_lo = memory[(addr + cpu.X) & 0xFF];
         idx_hi = memory[(addr + cpu.X + 1) & 0xFF];
         // Return address to where this address word points
-        return &memory[(uint16_t) idx_hi << 8 | idx_lo];
+        mem_addr = (uint16_t) idx_hi << 8 | idx_lo;
+        return &memory[mem_addr];
     case aizy: /* ($00), Y */
         cpu.PC += 1;
         // Byte after offset is an index into zero page
@@ -110,7 +118,8 @@ uint8_t *addrDecode(enum amode a)
         idx_hi = memory[(addr + 1) & 0xFF];
         // To this indirect address add the Y-Register to get
         // the final address
-        return &memory[(uint16_t) idx_hi << 8 | idx_lo + cpu.Y];
+        mem_addr = (uint16_t) idx_hi << 8 | idx_lo + cpu.Y;
+        return &memory[mem_addr];
     case aA:
         return &cpu.A;
     case aS:
@@ -181,6 +190,8 @@ void group1(int a, uint8_t idx)
         // transfer topmost two bits to flags
         cpu.P = cpu.P & 0x3F;
         cpu.P |= *op & 0xC0;
+        mem_rwb = 1;
+        mem_sync = true;
         return;
     case 2:            // PLP
         STACK_LOAD8(cpu.P);
@@ -270,6 +281,7 @@ void group3(int a, uint8_t idx)
 
 void group4(int a, uint8_t idx)
 {
+    uint8_t *addr;
     cpu.PC++;
     switch(idx) {
     case 2:            // DEY
@@ -291,7 +303,12 @@ void group4(int a, uint8_t idx)
         cpu.PC++;
         return;
     default:           // STY, TYA
-        *addrDecode(a) = cpu.Y;
+        addr = addrDecode(a);
+        *addr = cpu.Y;
+        if (addr != &cpu.A) {
+            mem_rwb = 0;
+            mem_sync = true;
+        }
         cpu.P &= F_MASK_NZ;
         // set N flag
         cpu.P |= cpu.Y & 0x80;
@@ -306,6 +323,7 @@ void group4(int a, uint8_t idx)
 
 void group5(int a, uint8_t idx)
 {
+    uint8_t *addr;
     cpu.PC++;
     switch(idx) {
     case 4:            // BCS
@@ -322,7 +340,12 @@ void group5(int a, uint8_t idx)
         printf("CLV");
         return;
     default:           // LDY, TAY
-        cpu.Y = *addrDecode(a);
+        addr = addrDecode(a);
+        if (addr != &cpu.A) {
+            mem_rwb = 1;
+            mem_sync = true;
+        }
+        cpu.Y = *addr;
         cpu.P &= F_MASK_NZ;
         // set N flag
         cpu.P |= cpu.Y & 0x80;
@@ -330,6 +353,7 @@ void group5(int a, uint8_t idx)
         if (!cpu.Y) {
             cpu.P |= F_Z;
         }
+        
         printf("LDY / TAY");
         return;
     }
@@ -378,6 +402,8 @@ void group6(int a, uint8_t idx)
         if (erg >= 0) {
             cpu.P |= F_C;
         }
+        mem_rwb = 1;
+        mem_sync = true;
         printf("CPY =%02X", op);
         return;
     }
@@ -426,6 +452,8 @@ void group7(int a, uint8_t idx)
         if (erg >= 0) {
             cpu.P |= F_C;
         }
+        mem_rwb = 1;
+        mem_sync = true;
         printf("CPX =%02X", op);
         return;
     }
@@ -442,6 +470,8 @@ void groupORA(int a, uint8_t idx)
     if (!cpu.A) {
         cpu.P |= F_Z;
     }
+    mem_rwb = 1;
+    mem_sync = true;
 }
 
 void groupAND(int a, uint8_t idx)
@@ -455,6 +485,8 @@ void groupAND(int a, uint8_t idx)
     if (!cpu.A) {
         cpu.P |= F_Z;
     }
+    mem_rwb = 1;
+    mem_sync = true;
 }
 
 void groupEOR(int a, uint8_t idx)
@@ -468,6 +500,8 @@ void groupEOR(int a, uint8_t idx)
     if (!cpu.A) {
         cpu.P |= F_Z;
     }
+    mem_rwb = 1;
+    mem_sync = true;
 }
 
 void groupADC(int a, uint8_t idx)
@@ -519,6 +553,8 @@ void groupADC(int a, uint8_t idx)
         cpu.P |= F_Z;
     }
     cpu.A = erg & 0xFF;
+    mem_rwb = 1;
+    mem_sync = true;
 }
 
 void groupSTA(int a, uint8_t idx)
@@ -526,6 +562,8 @@ void groupSTA(int a, uint8_t idx)
     cpu.PC = cpu.PC + 1;
     uint8_t *op = addrDecode(a);
     *op = cpu.A;
+    mem_rwb = 0;
+    mem_sync = true;
     printf("STA =%02X", cpu.A);
 }
 
@@ -540,6 +578,8 @@ void groupLDA(int a, uint8_t idx)
     if (!cpu.A) {
         cpu.P |= F_Z;
     }
+    mem_rwb = 1;
+    mem_sync = true;
 }
 
 void groupCMP(int a, uint8_t idx)
@@ -561,7 +601,8 @@ void groupCMP(int a, uint8_t idx)
     if (erg >= 0) {
         cpu.P |= F_C;
     }
-
+    mem_rwb = 1;
+    mem_sync = true;
     printf("CMP %02X, %02X", cpu.A, m);
 }
 
@@ -609,11 +650,14 @@ void groupSBC(int a, uint8_t idx)
         cpu.P |= F_Z;
     }
     cpu.A = erg & 0xFF;
+    mem_rwb = 1;
+    mem_sync = true;
 }
 
 void groupASL(int a, uint8_t idx)
 {
     uint8_t *m;
+    uint8_t val;
     cpu.PC++;
     switch(idx) {
     case 6:            // NOP
@@ -624,7 +668,13 @@ void groupASL(int a, uint8_t idx)
         // get highest bit into carry
         cpu.P &= F_MASK_NZC;
         cpu.P |= (*m & 0x80) >> 7;
-        *m <<= 1;
+        val = *m;
+        mem_rwb = 2;
+        if (m != &cpu.A) mem_sync = true;
+        while(mem_sync);
+        val <<= 1;
+        *m = val;
+        if (m != &cpu.A) mem_sync = true;
         // set N flag
         cpu.P |= *m & 0x80;
         // set Z flag
@@ -640,11 +690,18 @@ void groupROL(int a, uint8_t idx)
 {
     uint8_t *m;
     uint8_t c;
+    uint8_t val;
     cpu.PC++;
     m = addrDecode(a);
     c = (*m & 0x80) >> 7;
-    *m <<= 1;
-    *m |= cpu.P & F_C;
+    val = *m;
+    mem_rwb = 2;
+    if (m != &cpu.A) mem_sync = true;
+    while(mem_sync); 
+    val <<= 1;
+    val |= cpu.P & F_C;
+    *m = val;
+    if (m != &cpu.A) mem_sync = true;
     cpu.P &= F_MASK_NZC;
     // set C flag
     cpu.P |= c;
@@ -659,12 +716,19 @@ void groupROL(int a, uint8_t idx)
 
 void groupLSR(int a, uint8_t idx)
 {
+    uint8_t val;
     cpu.PC++;
     uint8_t *m = addrDecode(a);
     cpu.P &= F_MASK_ZC;
     // set C flag
-    cpu.P |= *m & 1;
-    *m >>= 1;
+    val = *m;
+    mem_rwb = 2;
+    if (m != &cpu.A) mem_sync = true;
+    while(mem_sync);
+    cpu.P |= val & 1;
+    val >>= 1;
+    *m = val;
+    if (m != &cpu.A) mem_sync = true;
     // set Z flag
     if (!*m) {
         cpu.P |= F_Z;
@@ -675,12 +739,19 @@ void groupLSR(int a, uint8_t idx)
 void groupROR(int a, uint8_t idx)
 {
     uint8_t *m;
-    uint8_t c;
+    uint8_t c, val;
     cpu.PC++;
     m = addrDecode(a);
-    c = *m & 1;
-    *m >>= 1;
-    *m |= (cpu.P & F_C) << 7;
+    val = *m;
+    mem_rwb = 2;
+    if (m != &cpu.A) mem_sync = true;
+    while(mem_sync); 
+    c = val & 1;
+    val >>= 1;
+    val |= (cpu.P & F_C) << 7;
+    *m = val;
+    if (m != &cpu.A) mem_sync = true;
+
     cpu.P &= F_MASK_NZC;
      
     // N flag is C flag
@@ -707,6 +778,8 @@ void groupSX(int a, uint8_t idx)
             cpu.P |= F_Z;
         }
     } else {
+        mem_rwb = 0;
+        mem_sync = true;
         printf("STX =%02X", cpu.X);
     }
 }
@@ -726,6 +799,8 @@ void groupLX(int a, uint8_t idx)
             cpu.P |= F_Z;
         }
     } else {
+        mem_rwb = 1;
+        mem_sync = true;
         printf("LDX =%02X", cpu.X);
     }
 }
@@ -734,7 +809,15 @@ void groupDEC(int a, uint8_t idx)
 {
     cpu.PC++;
     uint8_t *m = addrDecode(a);
-    (*m)--;
+    uint8_t val;
+
+    val = *m;
+    mem_rwb = 2;
+    if (m != &cpu.X) mem_sync = true;
+    while(mem_sync);
+    val--;
+    *m = val;
+    if (m != &cpu.X) mem_sync = true;
     cpu.P &= F_MASK_NZ;
     // set N flag
     cpu.P |= *m & 0x80;
@@ -748,6 +831,7 @@ void groupDEC(int a, uint8_t idx)
 void groupINC(int a, uint8_t idx)
 {
     cpu.PC++;
+    uint8_t val;
     if (idx == 2) {
                        // NOP
         printf("NOP");
@@ -755,7 +839,13 @@ void groupINC(int a, uint8_t idx)
     }
     uint8_t *m = addrDecode(a);
     printf("INC =%02X", *m);
-    (*m)++;
+    val = *m;
+    mem_rwb = 2;
+    mem_sync = true;
+    while(mem_sync); 
+    val++;
+    *m = val;
+    mem_sync = true;
     cpu.P &= F_MASK_NZ;
     // set N flag
     cpu.P |= *m & 0x80;
