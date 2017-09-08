@@ -10,6 +10,10 @@ typedef struct _6551_registerfile {
     uint8_t control;    
 } _6551_registerfile;
 
+typedef struct _6551_internal {
+    int pseudo_term_fd;
+} _6551_internal;
+
 void *_6551_stepclock(icircuit *self);
 icircuit *_6551_ctor(void);
 void *_6551_dtor(icircuit *self);

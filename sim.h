@@ -19,6 +19,7 @@ typedef struct icircuit {
     ChipFunc dtor;
     ChipFunc sync_read;
     ChipFunc sync_write;
+    void *internal;
 } icircuit;
 
 typedef struct {

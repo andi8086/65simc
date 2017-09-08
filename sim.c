@@ -111,6 +111,11 @@ void *update_func(void *threadid)
 {
 }
 
+void *chip_pulse_clock(icircuit *chip)
+{
+    chip->pulse_clock(chip);
+}
+
 void add_chip(sim65_t *sim, icircuit *chip)
 {
     icircuit **insert_at = &sim->circuit;
@@ -199,6 +204,10 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
+    fprintf(stdout, "Press any key to start simulator\n");
+    char key;
+    fscanf(stdin, "%c", &key);
+
     sim.running = true;
 
     /*
@@ -266,6 +275,9 @@ int main(int argc, char **argv)
             }
         }
         oldns = time.tv_nsec;
+
+        // pulse clock on all chips
+        foreach_chip(&sim, (ChipFunc) chip_pulse_clock);
 
         // fetch the opcode from memory
         op = memory[cpu.PC];
