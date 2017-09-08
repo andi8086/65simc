@@ -10,7 +10,9 @@ void *_6551_dtor(icircuit *self)
 
 void *_6551_stepclock(icircuit *self)
 {
-    
+    _6551_registerfile *regs = (_6551_registerfile *) &memory[self->address];    
+
+    // Check if data has been written... but how???? :D
 
 }
 

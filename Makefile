@@ -22,6 +22,9 @@ all: sim
 sim:
 	gcc $(CCFLAGS) $(SRCS) 
 
+ignore:
+	gcc $(CCFLAGS) -Wl,--unresolved-symbols=ignore-all $(SRCS)
+
 clean:
 	@rm -f ./sim
 	
