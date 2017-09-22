@@ -14,9 +14,9 @@ typedef struct _6551_internal {
     int pseudo_term_fd;
 } _6551_internal;
 
-void *_6551_stepclock(icircuit *self);
+void *_6551_stepclock(icircuit *self, void *data);
 icircuit *_6551_ctor(void);
-void *_6551_dtor(icircuit *self);
+void *_6551_dtor(icircuit *self, void *data);
 
 
 #endif // __6551_H__

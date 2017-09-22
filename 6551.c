@@ -9,7 +9,7 @@
 #include "6502.h"
 #include "6551.h"
 
-void *_6551_dtor(icircuit *self)
+void *_6551_dtor(icircuit *self, void *data)
 {
     free(self->registerfile);
     _6551_internal *i = (_6551_internal *) self->internal;
@@ -17,7 +17,7 @@ void *_6551_dtor(icircuit *self)
     free(self->internal);
 }
 
-void *_6551_stepclock(icircuit *self)
+void *_6551_stepclock(icircuit *self, void *data)
 {
     _6551_registerfile *regs = (_6551_registerfile *) &memory[self->address];    
     _6551_internal *internal = (_6551_internal *) self->internal;
@@ -26,17 +26,19 @@ void *_6551_stepclock(icircuit *self)
     read(internal->pseudo_term_fd, &(regs->data), 1);
 }
 
-void *_6551_sync_read(icircuit *self)
+void *_6551_sync_read(icircuit *self, void *data)
 {
     fprintf(stdout, "\n6551: reg read access\n");
 }
 
-void *_6551_sync_write(icircuit *self)
+void *_6551_sync_write(icircuit *self, void *data)
 {
-    fprintf(stdout, "\n6551: reg write access\n");
+    // get register which is written to
+    uint16_t reg = *((uint16_t *) data);
+    _6551_internal *i = (_6551_internal *) self->internal;
 }
 
-void *_6551_reset(icircuit *self)
+void *_6551_reset(icircuit *self, void *data)
 {
     fprintf(stdout, "6551 reset\n");
 }

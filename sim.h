@@ -6,7 +6,7 @@
 
 typedef struct icircuit icircuit;
 
-typedef void (*ChipFunc)(struct icircuit *);
+typedef void (*ChipFunc)(struct icircuit *, void *data);
 typedef icircuit (*ChipCtor)(uint16_t addr);
 
 typedef struct icircuit {
@@ -34,6 +34,6 @@ typedef struct {
 } sim65_t;
 
 void add_chip(sim65_t *sim, icircuit *chip);
-void foreach_chip(sim65_t *sim, ChipFunc func);
+void foreach_chip(sim65_t *sim, void *data, ChipFunc func);
 
 #endif //__SIM_H__

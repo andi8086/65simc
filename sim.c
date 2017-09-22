@@ -112,34 +112,34 @@ void *update_func(void *threadid)
 {
 }
 
-void *chip_pulse_clock(icircuit *chip)
+void *chip_pulse_clock(icircuit *chip, void *data)
 {
-    chip->pulse_clock(chip);
+    chip->pulse_clock(chip, data);
 }
 
 void add_chip(sim65_t *sim, icircuit *chip)
 {
     icircuit **insert_at = &sim->circuit;
-    
+
     while (*insert_at) insert_at = &(*insert_at)->next;
-        
+
     *insert_at = chip;
 }
 
-void foreach_chip(sim65_t *sim, ChipFunc func)
+void foreach_chip(sim65_t *sim, void *data, ChipFunc func)
 {
     icircuit *chip = sim->circuit;
-    
+
     do {
-        func(chip);
+        func(chip, data);
         chip = chip->next;
     } while(chip);
 
 }
 
-void *reset_chip(struct icircuit *self)
+void *reset_chip(struct icircuit *self, void *data)
 {
-    self->do_reset(self);
+    self->do_reset(self, data);
 }
 
 static sim65_t sim = { 0 };
@@ -195,9 +195,9 @@ int main(int argc, char **argv)
         fprintf(stderr, "Error reading config spec\n");
         exit(-1);
     }
-   
-    foreach_chip(&sim, (ChipFunc) reset_chip);
- 
+
+    foreach_chip(&sim, NULL, (ChipFunc) reset_chip);
+
     initMainWindow();
 
     if (delay_sync_cycle_init(&sim)) {
@@ -278,7 +278,7 @@ int main(int argc, char **argv)
         oldns = time.tv_nsec;
 
         // pulse clock on all chips
-        foreach_chip(&sim, (ChipFunc) chip_pulse_clock);
+        foreach_chip(&sim, NULL, (ChipFunc) chip_pulse_clock);
 
         // fetch the opcode from memory
         op = memory[cpu.PC];
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
 
     // signal the timing thread that it must stop
     sim.running = false;
-    
+
     pthread_join(timer_thread, NULL);
     pthread_join(gtk_thread, NULL);
     pthread_join(sync_chip_access_thread, NULL); 

@@ -22,9 +22,9 @@ typedef struct _6522_registerfile {
     uint8_t ORA_IRA_NO_HS;
 } _6522_registerfile;
 
-void *_6522_stepclock(icircuit *self);
+void *_6522_stepclock(icircuit *self, void *data);
 icircuit *_6522_ctor(void);
-void *_6522_dtor(icircuit *self);
+void *_6522_dtor(icircuit *self, void *data);
 
 
 #endif // __6522_H__

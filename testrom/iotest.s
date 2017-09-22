@@ -2,14 +2,11 @@
     .SEGMENT "CODE"
 
 
-TEST:   CLD        ; Clear decimal mode for test
-        LDA #13
+TEST:             
+        LDA #'A'
         STA $8020
 
-        LDA #14
-        ASL $8021
-
-        JMP $FFFF;
+        JMP $FFFF
 
 
 
