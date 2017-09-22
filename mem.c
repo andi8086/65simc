@@ -12,20 +12,24 @@ bool in_mem_range(icircuit *chip, uint16_t mem_addr)
            mem_addr < chip->address + chip->regsize;
 }
 
-void *chip_sync_read(icircuit *chip)
+void *chip_sync_read(icircuit *chip, void *data)
 {
+    uint16_t chipreg = 0;
     if (chip->sync_read) {
         if (in_mem_range(chip, mem_addr)) {
-            chip->sync_read(chip); 
+            chipreg = mem_addr - chip->address;
+            chip->sync_read(chip, &chipreg); 
         }
     }
 }
 
-void *chip_sync_write(icircuit *chip)
+void *chip_sync_write(icircuit *chip, void *data)
 {
+    uint16_t chipreg = 0;
     if (chip->sync_write) {
         if (in_mem_range(chip, mem_addr)) {
-            chip->sync_write(chip);
+            chipreg = mem_addr - chip->address;
+            chip->sync_write(chip, &chipreg);
         }
     }
 }
@@ -44,7 +48,7 @@ void *sync_mem_access(void *s)
             /* read sync is required, so that a chip may toggle internal
              * states if its register is read 
              */
-            foreach_chip(sim, (ChipFunc) chip_sync_read);
+            foreach_chip(sim, NULL, (ChipFunc) chip_sync_read);
             
             /* signal CPU operation, that sync has happened 
              */
@@ -53,13 +57,13 @@ void *sync_mem_access(void *s)
         case 0: 
             /* this while is only active if not coming from
              * case 2 
-             */
+                 */
             while(!mem_sync && sim->running);
             
             /* write sync is required, so that a chip may toggle internal
              * states if its register is written
              */
-            foreach_chip(sim, (ChipFunc) chip_sync_write);
+            foreach_chip(sim, NULL, (ChipFunc) chip_sync_write);
             
             /* signal CPU operation, that sync has happened 
              */

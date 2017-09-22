@@ -60,105 +60,105 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 {
     struct arguments *arguments = state->input;
 
-    switch(key)
+        switch(key)
+        {
+        case 'r':
+            arguments->romfile = arg;
+            fprintf(stdout, "ROM is loaded from %s\n", arguments->romfile);
+            break;
+        case 'a':
+            arguments->romaddr = strtol(arg, NULL, 16);
+            fprintf(stdout, "ROM starts at %u\n", arguments->romaddr);
+            break;
+        case 'd':
+            arguments->debug_regs = true;
+            break;
+        case ARGP_KEY_ARG:
+            if (state->arg_num > 0) {
+                argp_usage(state);
+            }
+            break;
+        default:
+            return ARGP_ERR_UNKNOWN;
+        }
+        return 0;
+    }
+
+    static struct argp argp = {
+        options, parse_opt, 0, doc
+    };
+
+    void *timer_func(void *s)
     {
-    case 'r':
-        arguments->romfile = arg;
-        fprintf(stdout, "ROM is loaded from %s\n", arguments->romfile);
-        break;
-    case 'a':
-        arguments->romaddr = strtol(arg, NULL, 16);
-        fprintf(stdout, "ROM starts at %u\n", arguments->romaddr);
-        break;
-    case 'd':
-        arguments->debug_regs = true;
-        break;
-    case ARGP_KEY_ARG:
-        if (state->arg_num > 0) {
-            argp_usage(state);
+        struct timespec wait_time;
+        sim65_t *state = (sim65_t *)s;
+
+        while(state->running) {
+
+            if (state->inst_cycles <= 3) {
+                delay_sync_cycle_loop(state);
+            } else {
+                delay_sync_cycle_timer(state);
+            }
+
+            state->sync_clock = false;
+            while(!state->sync_clock & state->running);
         }
-        break;
-    default:
-        return ARGP_ERR_UNKNOWN;
+        pthread_exit(NULL);
     }
-    return 0;
-}
 
-static struct argp argp = {
-    options, parse_opt, 0, doc
-};
-
-void *timer_func(void *s)
-{
-    struct timespec wait_time;
-    sim65_t *state = (sim65_t *)s;
-
-    while(state->running) {
-
-        if (state->inst_cycles <= 3) {
-            delay_sync_cycle_loop(state);
-        } else {
-            delay_sync_cycle_timer(state);
-        }
-
-        state->sync_clock = false;
-        while(!state->sync_clock & state->running);
+    void *update_func(void *threadid)
+    {
     }
-    pthread_exit(NULL);
-}
 
-void *update_func(void *threadid)
-{
-}
+    void *chip_pulse_clock(icircuit *chip, void *data)
+    {
+        chip->pulse_clock(chip, data);
+    }
 
-void *chip_pulse_clock(icircuit *chip)
-{
-    chip->pulse_clock(chip);
-}
-
-void add_chip(sim65_t *sim, icircuit *chip)
-{
-    icircuit **insert_at = &sim->circuit;
-    
-    while (*insert_at) insert_at = &(*insert_at)->next;
+    void add_chip(sim65_t *sim, icircuit *chip)
+    {
+        icircuit **insert_at = &sim->circuit;
         
-    *insert_at = chip;
-}
+        while (*insert_at) insert_at = &(*insert_at)->next;
+            
+        *insert_at = chip;
+    }
 
-void foreach_chip(sim65_t *sim, ChipFunc func)
-{
-    icircuit *chip = sim->circuit;
-    
-    do {
-        func(chip);
-        chip = chip->next;
-    } while(chip);
+    void foreach_chip(sim65_t *sim, void *data, ChipFunc func)
+    {
+        icircuit *chip = sim->circuit;
+        
+        do {
+            func(chip, data);
+            chip = chip->next;
+        } while(chip);
 
-}
+    }
 
-void *reset_chip(struct icircuit *self)
-{
-    self->do_reset(self);
-}
+    void *reset_chip(struct icircuit *self, void *data)
+    {
+        self->do_reset(self, data);
+    }
 
-static sim65_t sim = { 0 };
+    static sim65_t sim = { 0 };
 
-int main(int argc, char **argv)
-{
-    pthread_t timer_thread;
-    pthread_t gtk_thread;
-    pthread_t update_thread;
-    pthread_t sync_chip_access_thread;
+    int main(int argc, char **argv)
+    {
+        pthread_t timer_thread;
+        pthread_t gtk_thread;
+        pthread_t update_thread;
+        pthread_t sync_chip_access_thread;
 
-    struct arguments arguments;
+        struct arguments arguments;
 
-    arguments.romfile = NULL;
-    arguments.romaddr = 0xC000;
-    arguments.debug_regs = false;
+        arguments.romfile = NULL;
+        arguments.romaddr = 0xC000;
+        arguments.debug_regs = false;
 
-    argp_parse(&argp, argc, argv, 0, 0, &arguments);
+        argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-    bool done;
+        bool done;
     uint8_t cc, idx;
     enum amode a;
     uint8_t op; 
@@ -195,7 +195,7 @@ int main(int argc, char **argv)
         exit(-1);
     }
    
-    foreach_chip(&sim, (ChipFunc) reset_chip);
+    foreach_chip(&sim, NULL, (ChipFunc) reset_chip);
  
     initMainWindow();
 
@@ -277,7 +277,7 @@ int main(int argc, char **argv)
         oldns = time.tv_nsec;
 
         // pulse clock on all chips
-        foreach_chip(&sim, (ChipFunc) chip_pulse_clock);
+        foreach_chip(&sim, NULL, (ChipFunc) chip_pulse_clock);
 
         // fetch the opcode from memory
         op = memory[cpu.PC];
@@ -315,6 +315,8 @@ int main(int argc, char **argv)
 
         // signal the timing thread that it can start counting
         sim.sync_clock = true;
+
+        printf("before instruction\n");
 
         // parallely, execute CPU instruction
         opcodes[idx].func(a, op & 7);

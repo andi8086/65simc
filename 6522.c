@@ -3,28 +3,28 @@
 #include "6522.h"
 
 
-void *_6522_dtor(icircuit *self)
+void *_6522_dtor(icircuit *self, void *data)
 {
 
 }
 
-void *_6522_stepclock(icircuit *self)
+void *_6522_stepclock(icircuit *self, void *data)
 {
     
 
 }
 
-void *_6522_sync_read(icircuit *self)
+void *_6522_sync_read(icircuit *self, void *data)
 {
     fprintf(stdout, "\n6522: reg read access\n");
 }
 
-void *_6522_sync_write(icircuit *self)
+void *_6522_sync_write(icircuit *self, void *data)
 {
     fprintf(stdout, "\n6522: reg write access\n");
 }
 
-void *_6522_reset(icircuit *self)
+void *_6522_reset(icircuit *self, void *data)
 {
     fprintf(stdout, "6522 reset\n");
 }
