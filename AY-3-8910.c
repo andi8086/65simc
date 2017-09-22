@@ -3,28 +3,28 @@
 #include "AY-3-8910.h"
 
 
-void *_AY_3_8910_dtor(icircuit *self)
+void *_AY_3_8910_dtor(icircuit *self, void *data)
 {
 
 }
 
-void *_AY_3_8910_stepclock(icircuit *self)
+void *_AY_3_8910_stepclock(icircuit *self, void *data)
 {
     
 
 }
 
-void *_AY_3_8910_sync_read(icircuit *self)
+void *_AY_3_8910_sync_read(icircuit *self, void *data)
 {
 
 }
 
-void *_AY_3_8910_sync_write(icircuit *self)
+void *_AY_3_8910_sync_write(icircuit *self, void *data)
 {
 
 }
 
-void *_AY_3_8910_reset(icircuit *self)
+void *_AY_3_8910_reset(icircuit *self, void *data)
 {
     fprintf(stdout, "AY-3-8910 reset\n");
 }

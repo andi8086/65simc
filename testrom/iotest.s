@@ -5,6 +5,14 @@
 TEST:             
         LDA #'A'
         STA $8020
+        
+        LDA #'B'
+        STA $8020
+
+READBYTE:
+        LDA $8020
+        NOP
+        JMP READBYTE
 
         JMP $FFFF
 

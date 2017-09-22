@@ -8,6 +8,7 @@
 #include <errno.h>
 #include "6502.h"
 #include "6551.h"
+#include <termios.h>
 
 void *_6551_dtor(icircuit *self, void *data)
 {
@@ -23,7 +24,11 @@ void *_6551_stepclock(icircuit *self, void *data)
     _6551_internal *internal = (_6551_internal *) self->internal;
     
     /* read byte from pseudo terminal into data register */
-    read(internal->pseudo_term_fd, &(regs->data), 1);
+    uint8_t byte;
+    size_t res = read(internal->pseudo_term_fd, &byte, 1);
+    if (res == 1) {
+        fprintf(stderr, "one byte recognized\n");
+    }
 }
 
 void *_6551_sync_read(icircuit *self, void *data)
@@ -38,8 +43,8 @@ void *_6551_sync_write(icircuit *self, void *data)
     _6551_internal *i = (_6551_internal *) self->internal;
     if (reg == 0) {
         // output data to serial pseudo terminal
-        //write(i->pseudo_term_fd, &memory[self->address], 1);
-        printf("write to reg 0");
+        write(i->pseudo_term_fd, &memory[self->address], 1);
+        // printf("write to reg 0");
     }
 }
 
@@ -54,7 +59,7 @@ icircuit *_6551_ctor(void)
      * the outer world
      */
 
-    int fdm = posix_openpt(O_RDWR);
+    int fdm = posix_openpt(O_RDWR | O_NDELAY);
     if (fdm < 0) {
         fprintf(stderr, "Error opening pseudo terminal: %s\n", strerror(errno));
         exit(-1);
@@ -88,5 +93,12 @@ icircuit *_6551_ctor(void)
     ic->internal = malloc(sizeof(_6551_internal));
     _6551_internal *i = (_6551_internal *)ic->internal;
     i->pseudo_term_fd = fdm;
+
+    struct termios pseudot_ios;
+
+    tcgetattr(fdm, &pseudot_ios);
+    pseudot_ios.c_lflag &= ~(ECHO|ECHONL|ICANON|ISIG|IEXTEN);
+    tcsetattr(fdm, TCSANOW, &pseudot_ios);
+
     return ic;
 }
