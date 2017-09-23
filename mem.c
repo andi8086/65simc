@@ -70,7 +70,11 @@ void *sync_mem_access(void *s)
             mem_sync = false;
             break;
         }
-
+        
+        /* prevent wrong sync if accessing register after hardware
+         * was accessed
+         */
+        mem_addr = 0;
     }
     pthread_exit(NULL);
 }
