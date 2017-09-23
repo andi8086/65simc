@@ -46,6 +46,7 @@ const char doc[] = "sim6502c - an extendable 6502 simulator in C";
 static struct argp_option options[] = {
     {"rom", 'r', "FILE", 0, "Specify ROM file"},
     {"raddr", 'a', "HEX", 0, "Specify ROM address in HEX, default is C000"},
+    {"debug", 'd', NULL, 0, "Activate debug mode"},
     {0}
 };
 
