@@ -36,6 +36,9 @@ void *_6551_sync_write(icircuit *self, void *data)
     // get register which is written to
     uint16_t reg = *((uint16_t *) data);
     _6551_internal *i = (_6551_internal *) self->internal;
+    if (reg == 0) {
+        write(i->pseudo_term_fd, &memory[self->address], 1);
+    }
 }
 
 void *_6551_reset(icircuit *self, void *data)
