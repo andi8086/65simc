@@ -27,10 +27,13 @@
 #define STACK_LOAD8(x) \
     x = memory[0x100 + ++cpu.S];
 
+
+// This function returns a memory address that represents
+// the source or destination operand
 uint8_t *addrDecode(enum amode a)
 {
     uint8_t idx_lo, idx_hi;
-    uint16_t addr;
+    uint16_t addr, addr_hi, addr_lo;
 
     switch(a) {
     case aNULL:
@@ -56,6 +59,12 @@ uint8_t *addrDecode(enum amode a)
         mem_addr = (uint16_t) idx_hi << 8 | idx_lo;
         return &memory[mem_addr];
     case arel: /* PC + $0000 */
+        cpu.PC += 2;
+        // Word after opcode is relative to PC
+        idx_lo = memory[cpu.PC - 2];
+        idx_hi = memory[cpu.PC - 1];
+        mem_addr = (int16_t) (uint16_t) (idx_hi << 8 | idx_lo);
+    
         return 0;
     case azpx: /* $00, X */
         cpu.PC += 1;
@@ -94,9 +103,15 @@ uint8_t *addrDecode(enum amode a)
         idx_lo = memory[cpu.PC - 2];
         idx_hi = memory[cpu.PC - 1];
         // Word after opcode is a pointer to the address
-        addr = memory[(uint16_t) idx_hi << 8 | idx_lo];
+        addr = (uint16_t) idx_hi << 8 | idx_lo;
+
+        addr_lo = memory[((uint16_t) idx_hi) << 8 | idx_lo];
+        addr_hi = memory[(((uint16_t) idx_hi) << 8 | idx_lo) + 1];
+        addr = addr_hi << 8 | addr_lo; 
+        printf("DEBUG ($XXXX): PC=%04X, idx_lo = %02X, idx_hi = %02X\n", cpu.PC, idx_lo, idx_hi);
+        printf("*IND = %04X\n", addr);
         // Return address to where this address points
-        mem_addr = addr;
+        mem_addr = memory[addr];
         return &memory[addr];
     case aizx: /* ($00, X) */
         cpu.PC += 1;
@@ -183,9 +198,11 @@ void group1(int a, uint8_t idx)
     case 1:            // BIT zp
     case 3:            // BIT abs
         op = addrDecode(a);
-        printf("BIT %02X, %02X", cpu.A, op);
+        printf("BIT %02X, %02X", cpu.A, *op);
         if (!(*op & cpu.A)) {
             cpu.P |= F_Z;
+        } else {
+            cpu.P &= ~F_Z;
         }
         // transfer topmost two bits to flags
         cpu.P = cpu.P & 0x3F;
@@ -259,9 +276,9 @@ void group3(int a, uint8_t idx)
         printf("PLA");
         return;
     case 3:            // JMP ind
-        addr = *((uint16_t*) addrDecode(a));
+        addr = (uint16_t) (addrDecode(a) - memory);
         cpu.PC = addr;
-        printf("JMP");
+        printf("JMP (%04X)", addr);
         return;
     case 4:            // BVS
         if (cpu.P & F_V) {
@@ -667,8 +684,8 @@ void groupASL(int a, uint8_t idx)
         m = addrDecode(a);
         // get highest bit into carry
         cpu.P &= F_MASK_NZC;
-        cpu.P |= (*m & 0x80) >> 7;
         val = *m;
+        cpu.P |= (val & 0x80) >> 7;
         mem_rwb = 2;
         if (m != &cpu.A) mem_sync = true;
         while(mem_sync);
@@ -676,9 +693,9 @@ void groupASL(int a, uint8_t idx)
         *m = val;
         if (m != &cpu.A) mem_sync = true;
         // set N flag
-        cpu.P |= *m & 0x80;
+        cpu.P |= val & 0x80;
         // set Z flag
-        if (!*m) {
+        if (!val) {
             cpu.P |= F_Z;
         }
         printf("ASL");
@@ -706,9 +723,9 @@ void groupROL(int a, uint8_t idx)
     // set C flag
     cpu.P |= c;
     // set N flag
-    cpu.P |= *m & 0x80;
+    cpu.P |= val & 0x80;
     // set Z flag
-    if (!*m) {
+    if (!val) {
         cpu.P |= F_Z;
     }
     printf("ROL");
@@ -743,6 +760,7 @@ void groupROR(int a, uint8_t idx)
     cpu.PC++;
     m = addrDecode(a);
     val = *m;
+    printf("ROR (%02X, %1X) => ", val, cpu.P & F_C);
     mem_rwb = 2;
     if (m != &cpu.A) mem_sync = true;
     while(mem_sync); 
@@ -751,16 +769,15 @@ void groupROR(int a, uint8_t idx)
     val |= (cpu.P & F_C) << 7;
     *m = val;
     if (m != &cpu.A) mem_sync = true;
-
     cpu.P &= F_MASK_NZC;
      
     // N flag is C flag
-    cpu.P |= *m & 0x80;
+    cpu.P |= val & 0x80;
     cpu.P |= c;
-    if (!*m) {
+    if (!val) {
         cpu.P |= F_Z;
     }
-    printf("ROR");
+    printf("(%02X, %1X)", val, cpu.P & F_C);
 }
 
 void groupSX(int a, uint8_t idx)

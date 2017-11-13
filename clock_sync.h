@@ -13,7 +13,7 @@
 
 /* Number of nano seconds per CPU cycle
  */
-#define F_CYC_NSEC 1E3
+#define F_CYC_NSEC 1E4
 
 /* Number of loops used to initially calculate
  * delay loop for 1 cpu cycle

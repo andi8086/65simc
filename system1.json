@@ -15,13 +15,13 @@
     },
     "chip": {
         "type": "6522",
-        "addr": "8040",
+        "addr": "8060",
         "portA": "P1",
         "portB": "P2"
     },
     "chip": {
         "type": "6551",
-        "addr": "8020",
+        "addr": "8040",
         "serial": "/dev/ptmx"
     },
     "chip": {

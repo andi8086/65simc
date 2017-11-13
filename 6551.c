@@ -27,13 +27,26 @@ void *_6551_stepclock(icircuit *self, void *data)
     uint8_t byte;
     size_t res = read(internal->pseudo_term_fd, &byte, 1);
     if (res == 1) {
-        fprintf(stderr, "one byte recognized\n");
+        //fprintf(stderr, "one byte recognized\n");
+        memory[self->address + 1] |= 0x08;
+        memory[self->address] = byte;
     }
 }
 
 void *_6551_sync_read(icircuit *self, void *data)
 {
     fprintf(stdout, "\n6551: reg read access\n");
+    uint16_t reg = *((uint16_t *) data);
+    _6551_internal *i = (_6551_internal *) self->internal;
+    if (reg == 1) {
+        // fake transmit buffer always empty
+        memory[self->address + 1] = 0x10;
+    } else
+    if (reg == 0) {
+        // after one byte has been read, clear the receive buffer
+        // full flag
+        memory[self->address + 1] &= ~0x08;
+    }
 }
 
 void *_6551_sync_write(icircuit *self, void *data)
