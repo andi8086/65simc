@@ -63,8 +63,8 @@ uint8_t *addrDecode(enum amode a)
         // Word after opcode is relative to PC
         idx_lo = memory[cpu.PC - 2];
         idx_hi = memory[cpu.PC - 1];
-        mem_addr = (int16_t) (uint16_t) (idx_hi << 8 | idx_lo);
-    
+        mem_addr = (int16_t) (idx_hi << 8 | idx_lo);
+     /* TODO */ 
         return 0;
     case azpx: /* $00, X */
         cpu.PC += 1;
